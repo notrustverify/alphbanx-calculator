@@ -131,6 +131,7 @@
   <script>
     let alphPrice = null;
     const MIN_CR = 200; // Minimum Collateral Ratio (200%)
+    const RISK_THRESHOLD = 250; // Show liquidation price when CR is below this
 
     async function fetchPrice() {
       try {
@@ -181,9 +182,6 @@
         
         if (borrowed > 0) {
           const currentCR = (totalValue / borrowed) * 100;
-          // Liquidation price is when collateral value equals minimum required value
-          // borrowed * MIN_CR = alph * liquidationPrice * 100
-          // liquidationPrice = (borrowed * MIN_CR) / (alph * 100)
           const liqPrice = (borrowed * MIN_CR) / (alph * 100);
           const priceDrop = ((alphPrice - liqPrice) / alphPrice) * 100;
           
@@ -196,19 +194,21 @@
             const additionalAlphNeeded = minAlphNeeded - alph;
             minRequired.textContent = `Need ${additionalAlphNeeded.toFixed(2)} more ALPH for minimum CR`;
             minRequired.className = 'result warning';
-          } else {
+            liquidationPrice.textContent = `Liquidation Price: $${liqPrice.toFixed(4)}`;
+            safetyMargin.textContent = 'WARNING: Below minimum collateral ratio!';
+            safetyMargin.className = 'result warning';
+          } else if (currentCR < RISK_THRESHOLD) {
             minRequired.textContent = `Safe: Above minimum ${MIN_CR}% ratio`;
             minRequired.className = 'result safe';
-          }
-          
-          liquidationPrice.textContent = `Liquidation Price: $${liqPrice.toFixed(4)}`;
-          
-          if (priceDrop > 0) {
+            liquidationPrice.textContent = `Liquidation Price: $${liqPrice.toFixed(4)}`;
             safetyMargin.textContent = `Price can drop ${priceDrop.toFixed(2)}% before liquidation`;
             safetyMargin.className = 'result safe';
           } else {
-            safetyMargin.textContent = 'WARNING: Below liquidation price!';
-            safetyMargin.className = 'result warning';
+            minRequired.textContent = `Safe: Above minimum ${MIN_CR}% ratio`;
+            minRequired.className = 'result safe';
+            liquidationPrice.textContent = '';
+            safetyMargin.textContent = `Very safe position with ${currentCR.toFixed(2)}% CR`;
+            safetyMargin.className = 'result safe';
           }
         } else {
           collateralValue.textContent = `Collateral Value: $${totalValue.toFixed(2)}`;
