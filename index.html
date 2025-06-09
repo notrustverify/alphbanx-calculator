@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ALPH Liquidation Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .calculator {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      width: 340px;
+    }
+    h2 {
+      text-align: center;
+      color: #333;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      margin: 8px 0 16px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .result {
+      margin-top: 16px;
+      padding: 8px;
+      text-align: center;
+      font-weight: bold;
+    }
+    .info {
+      font-size: 0.9em;
+      color: #666;
+      text-align: center;
+      margin-top: 8px;
+    }
+    .warning {
+      color: #e74c3c;
+    }
+    .safe {
+      color: #2ecc71;
+    }
+    .liquidation {
+      margin-top: 20px;
+      padding: 15px;
+      border-top: 1px solid #eee;
+    }
+    .borrow-info {
+      background: #f8f9fa;
+      padding: 12px;
+      border-radius: 6px;
+      margin: 12px 0;
+    }
+    .slider-container {
+      margin: 20px 0;
+    }
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .slider {
+      width: 100%;
+      height: 8px;
+      border-radius: 4px;
+      background: #ddd;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #3498db;
+      cursor: pointer;
+    }
+    .slider::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #3498db;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="calculator">
+    <h2>ALPH Liquidation Calculator</h2>
+    
+    <label for="alph">ALPH Collateral Amount</label>
+    <input type="number" id="alph" placeholder="Enter ALPH amount" oninput="updateCalculator()" />
+
+    <div class="borrow-info">
+      <div class="result" id="maxBorrow"></div>
+      <div class="slider-container">
+        <div class="slider-label">
+          <span>ABD to Borrow:</span>
+          <span id="borrowAmount">0 ABD</span>
+        </div>
+        <input type="range" id="borrowSlider" class="slider" min="0" max="1000" value="0" step="1" oninput="updateFromSlider()">
+        <input type="number" id="borrowed" placeholder="Enter ABD amount" oninput="updateFromInput()" style="margin-top: 10px;" />
+      </div>
+      <div class="result" id="collateralValue"></div>
+      <div class="result" id="currentRatio"></div>
+      <div class="result" id="minRequired"></div>
+    </div>
+
+    <div class="result" id="price">Loading ALPH price...</div>
+
+    <div class="liquidation">
+      <div class="result" id="liquidationPrice"></div>
+      <div class="result" id="safetyMargin"></div>
+    </div>
+
+    <div class="info">The minimum required collateral ratio is 200%. Keep your ratio above this to avoid liquidation risk.</div>
+  </div>
+
+  <script>
+    let alphPrice = null;
+    const MIN_CR = 200; // Minimum Collateral Ratio (200%)
+
+    async function fetchPrice() {
+      try {
+        const res = await fetch('https://api.diadata.org/v1/assetQuotation/Alephium/tgx7VNFoP9DJiFMFgXXtafQZkUvyEdDHT9ryamHJYrjq');
+        const data = await res.json();
+        alphPrice = parseFloat(data.Price);
+        document.getElementById('price').textContent = `Current ALPH Price: $${alphPrice.toFixed(4)}`;
+        updateCalculator();
+      } catch (err) {
+        document.getElementById('price').textContent = 'Error fetching ALPH price';
+      }
+    }
+
+    function updateFromSlider() {
+      const sliderValue = document.getElementById('borrowSlider').value;
+      document.getElementById('borrowed').value = sliderValue;
+      document.getElementById('borrowAmount').textContent = sliderValue + ' ABD';
+      updateCalculator();
+    }
+
+    function updateFromInput() {
+      const inputValue = document.getElementById('borrowed').value;
+      const slider = document.getElementById('borrowSlider');
+      slider.value = inputValue;
+      document.getElementById('borrowAmount').textContent = inputValue + ' ABD';
+      updateCalculator();
+    }
+
+    function updateCalculator() {
+      const alph = parseFloat(document.getElementById('alph').value);
+      const borrowed = parseFloat(document.getElementById('borrowed').value) || 0;
+      
+      const collateralValue = document.getElementById('collateralValue');
+      const currentRatio = document.getElementById('currentRatio');
+      const minRequired = document.getElementById('minRequired');
+      const liquidationPrice = document.getElementById('liquidationPrice');
+      const safetyMargin = document.getElementById('safetyMargin');
+      const maxBorrow = document.getElementById('maxBorrow');
+      const slider = document.getElementById('borrowSlider');
+
+      if (alph > 0 && alphPrice !== null) {
+        const totalValue = alph * alphPrice;
+        const maxBorrowAmount = totalValue * (100 / MIN_CR);
+        
+        // Update max borrow and slider max
+        maxBorrow.textContent = `Maximum Borrow: ${maxBorrowAmount.toFixed(2)} ABD`;
+        slider.max = Math.floor(maxBorrowAmount);
+        
+        if (borrowed > 0) {
+          const currentCR = (totalValue / borrowed) * 100;
+          const liqPrice = (borrowed * MIN_CR) / (alph * 100);
+          const priceDrop = ((alphPrice - liqPrice) / alphPrice) * 100;
+          const minAlphNeeded = (borrowed * MIN_CR) / (100 * alphPrice);
+          
+          collateralValue.textContent = `Collateral Value: $${totalValue.toFixed(2)}`;
+          currentRatio.textContent = `Current Ratio: ${currentCR.toFixed(2)}%`;
+          currentRatio.className = 'result ' + (currentCR >= MIN_CR ? 'safe' : 'warning');
+          
+          if (currentCR < MIN_CR) {
+            const additionalAlphNeeded = minAlphNeeded - alph;
+            minRequired.textContent = `Need ${additionalAlphNeeded.toFixed(2)} more ALPH for minimum CR`;
+            minRequired.className = 'result warning';
+          } else {
+            minRequired.textContent = `Safe: Above minimum ${MIN_CR}% ratio`;
+            minRequired.className = 'result safe';
+          }
+          
+          liquidationPrice.textContent = `Liquidation Price: $${liqPrice.toFixed(4)}`;
+          
+          if (currentCR >= MIN_CR) {
+            safetyMargin.textContent = `Price can drop ${priceDrop.toFixed(2)}% before liquidation`;
+            safetyMargin.className = 'result safe';
+          } else {
+            safetyMargin.textContent = 'WARNING: Not enough collateral!';
+            safetyMargin.className = 'result warning';
+          }
+        } else {
+          collateralValue.textContent = `Collateral Value: $${totalValue.toFixed(2)}`;
+          currentRatio.textContent = '';
+          minRequired.textContent = '';
+          liquidationPrice.textContent = '';
+          safetyMargin.textContent = '';
+        }
+      } else {
+        maxBorrow.textContent = '';
+        collateralValue.textContent = '';
+        currentRatio.textContent = '';
+        minRequired.textContent = '';
+        liquidationPrice.textContent = '';
+        safetyMargin.textContent = '';
+      }
+    }
+
+    fetchPrice();
+    // Refresh price every minute
+    setInterval(fetchPrice, 60000);
+  </script>
+</body>
+</html> 
