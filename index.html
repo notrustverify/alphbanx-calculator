@@ -111,7 +111,6 @@
           <span id="borrowAmount">0 ABD</span>
         </div>
         <input type="range" id="borrowSlider" class="slider" min="0" max="1000" value="0" step="1" oninput="updateFromSlider()">
-        <input type="number" id="borrowed" placeholder="Enter ABD amount" oninput="updateFromInput()" style="margin-top: 10px;" />
       </div>
       <div class="result" id="collateralValue"></div>
       <div class="result" id="currentRatio"></div>
@@ -131,7 +130,6 @@
   <script>
     let alphPrice = null;
     const MIN_CR = 200; // Minimum Collateral Ratio (200%)
-    const RISK_THRESHOLD = 250; // Show liquidation price when CR is below this
 
     async function fetchPrice() {
       try {
@@ -147,22 +145,13 @@
 
     function updateFromSlider() {
       const sliderValue = document.getElementById('borrowSlider').value;
-      document.getElementById('borrowed').value = sliderValue;
       document.getElementById('borrowAmount').textContent = sliderValue + ' ABD';
-      updateCalculator();
-    }
-
-    function updateFromInput() {
-      const inputValue = document.getElementById('borrowed').value;
-      const slider = document.getElementById('borrowSlider');
-      slider.value = inputValue;
-      document.getElementById('borrowAmount').textContent = inputValue + ' ABD';
       updateCalculator();
     }
 
     function updateCalculator() {
       const alph = parseFloat(document.getElementById('alph').value);
-      const borrowed = parseFloat(document.getElementById('borrowed').value) || 0;
+      const borrowed = parseFloat(document.getElementById('borrowSlider').value) || 0;
       
       const collateralValue = document.getElementById('collateralValue');
       const currentRatio = document.getElementById('currentRatio');
@@ -182,6 +171,9 @@
         
         if (borrowed > 0) {
           const currentCR = (totalValue / borrowed) * 100;
+          // Liquidation price is when collateral value equals minimum required value
+          // borrowed * MIN_CR = alph * liquidationPrice * 100
+          // liquidationPrice = (borrowed * MIN_CR) / (alph * 100)
           const liqPrice = (borrowed * MIN_CR) / (alph * 100);
           const priceDrop = ((alphPrice - liqPrice) / alphPrice) * 100;
           
@@ -194,21 +186,19 @@
             const additionalAlphNeeded = minAlphNeeded - alph;
             minRequired.textContent = `Need ${additionalAlphNeeded.toFixed(2)} more ALPH for minimum CR`;
             minRequired.className = 'result warning';
-            liquidationPrice.textContent = `Liquidation Price: $${liqPrice.toFixed(4)}`;
-            safetyMargin.textContent = 'WARNING: Below minimum collateral ratio!';
-            safetyMargin.className = 'result warning';
-          } else if (currentCR < RISK_THRESHOLD) {
-            minRequired.textContent = `Safe: Above minimum ${MIN_CR}% ratio`;
-            minRequired.className = 'result safe';
-            liquidationPrice.textContent = `Liquidation Price: $${liqPrice.toFixed(4)}`;
-            safetyMargin.textContent = `Price can drop ${priceDrop.toFixed(2)}% before liquidation`;
-            safetyMargin.className = 'result safe';
           } else {
             minRequired.textContent = `Safe: Above minimum ${MIN_CR}% ratio`;
             minRequired.className = 'result safe';
-            liquidationPrice.textContent = '';
-            safetyMargin.textContent = `Very safe position with ${currentCR.toFixed(2)}% CR`;
+          }
+          
+          liquidationPrice.textContent = `Liquidation Price: $${liqPrice.toFixed(4)}`;
+          
+          if (priceDrop > 0) {
+            safetyMargin.textContent = `Price can drop ${priceDrop.toFixed(2)}% before liquidation`;
             safetyMargin.className = 'result safe';
+          } else {
+            safetyMargin.textContent = 'WARNING: Below liquidation price!';
+            safetyMargin.className = 'result warning';
           }
         } else {
           collateralValue.textContent = `Collateral Value: $${totalValue.toFixed(2)}`;
