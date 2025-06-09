@@ -5,31 +5,46 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ALPH Liquidation Calculator</title>
   <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+    }
     body {
       font-family: Arial, sans-serif;
       background: #f0f0f0;
-      margin: 0;
-      padding: 20px;
+      padding: 10px;
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
+      box-sizing: border-box;
     }
     .calculator {
       background: white;
-      padding: 20px;
+      padding: 15px;
       border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      width: 340px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 340px;
+      box-sizing: border-box;
+      max-height: 100vh;
+      overflow: auto;
+      -ms-overflow-style: none;  /* Hide scrollbar for IE and Edge */
+      scrollbar-width: none;  /* Hide scrollbar for Firefox */
+    }
+    .calculator::-webkit-scrollbar {
+      display: none;  /* Hide scrollbar for Chrome, Safari and Opera */
     }
     h2 {
       text-align: center;
       color: #333;
-      margin-bottom: 5px;
+      margin: 0 0 5px 0;
+      font-size: 1.3em;
     }
     .dapp-link {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
     .dapp-link a {
       color: #3498db;
@@ -41,20 +56,21 @@
     }
     input {
       width: 100%;
-      padding: 8px;
-      margin: 8px 0 16px;
+      padding: 6px;
+      margin: 4px 0 8px;
       border: 1px solid #ddd;
       border-radius: 4px;
       box-sizing: border-box;
     }
     .result {
-      margin-top: 16px;
-      padding: 8px;
+      margin-top: 8px;
+      padding: 4px;
       text-align: center;
       font-weight: bold;
+      font-size: 0.9em;
     }
     .info {
-      font-size: 0.9em;
+      font-size: 0.8em;
       color: #666;
       text-align: center;
       margin-top: 8px;
@@ -66,23 +82,24 @@
       color: #2ecc71;
     }
     .liquidation {
-      margin-top: 20px;
-      padding: 15px;
+      margin-top: 10px;
+      padding: 10px 0;
       border-top: 1px solid #eee;
     }
     .borrow-info {
       background: #f8f9fa;
-      padding: 12px;
+      padding: 10px;
       border-radius: 6px;
-      margin: 12px 0;
+      margin: 8px 0;
     }
     .slider-container {
-      margin: 20px 0;
+      margin: 10px 0;
     }
     .slider-label {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
+      font-size: 0.9em;
     }
     .slider {
       width: 100%;
@@ -91,32 +108,52 @@
       background: #ddd;
       outline: none;
       -webkit-appearance: none;
+      margin: 8px 0;
     }
     .slider::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
       border-radius: 50%;
       background: #3498db;
       cursor: pointer;
     }
     .slider::-moz-range-thumb {
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
       border-radius: 50%;
       background: #3498db;
       cursor: pointer;
+    }
+    .borrow-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .borrow-input {
+      flex: 1;
+      padding: 6px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      width: 100px;
+      font-size: 0.9em;
+    }
+    .borrow-input.invalid {
+      border-color: #e74c3c;
+      background-color: #ffd7d7;
     }
     .price-info {
       display: flex;
       justify-content: center;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
+      font-size: 0.9em;
     }
     .refresh-icon {
       cursor: pointer;
       color: #3498db;
-      font-size: 1.2em;
+      font-size: 1.1em;
     }
     .refresh-icon:hover {
       color: #2980b9;
@@ -127,6 +164,9 @@
     }
     .refreshing {
       animation: spin 1s linear infinite;
+    }
+    label {
+      font-size: 0.9em;
     }
   </style>
 </head>
@@ -148,6 +188,10 @@
           <span id="borrowAmount">0 ABD</span>
         </div>
         <input type="range" id="borrowSlider" class="slider" min="0" max="1000" value="0" step="1" oninput="updateFromSlider()">
+        <div class="borrow-controls">
+          <input type="number" id="borrowInput" class="borrow-input" placeholder="Enter ABD" min="0" step="1" oninput="updateFromInput()">
+          <span>ABD</span>
+        </div>
       </div>
       <div class="result" id="collateralValue"></div>
       <div class="result" id="currentRatio"></div>
@@ -206,6 +250,28 @@
     function updateFromSlider() {
       const sliderValue = document.getElementById('borrowSlider').value;
       document.getElementById('borrowAmount').textContent = sliderValue + ' ABD';
+      document.getElementById('borrowInput').value = sliderValue;
+      updateCalculator();
+    }
+
+    function updateFromInput() {
+      const input = document.getElementById('borrowInput');
+      const slider = document.getElementById('borrowSlider');
+      let value = parseFloat(input.value) || 0;
+      
+      // Ensure value is within bounds
+      const maxValue = parseFloat(slider.max);
+      if (value > maxValue) {
+        value = maxValue;
+        input.value = maxValue;
+      }
+      
+      slider.value = value;
+      document.getElementById('borrowAmount').textContent = value + ' ABD';
+      
+      // Visual feedback
+      input.classList.toggle('invalid', value > maxValue);
+      
       updateCalculator();
     }
 
@@ -220,6 +286,7 @@
       const safetyMargin = document.getElementById('safetyMargin');
       const maxBorrow = document.getElementById('maxBorrow');
       const slider = document.getElementById('borrowSlider');
+      const borrowInput = document.getElementById('borrowInput');
 
       if (alph > 0 && alphPrice !== null) {
         const totalValue = alph * alphPrice;
@@ -228,12 +295,17 @@
         // Update max borrow and slider max
         maxBorrow.textContent = `Maximum Borrow: ${maxBorrowAmount.toFixed(2)} ABD`;
         slider.max = Math.floor(maxBorrowAmount);
+        borrowInput.max = Math.floor(maxBorrowAmount);
+        
+        // Ensure borrowed amount doesn't exceed new max
+        if (borrowed > maxBorrowAmount) {
+          slider.value = Math.floor(maxBorrowAmount);
+          borrowInput.value = Math.floor(maxBorrowAmount);
+          document.getElementById('borrowAmount').textContent = Math.floor(maxBorrowAmount) + ' ABD';
+        }
         
         if (borrowed > 0) {
           const currentCR = (totalValue / borrowed) * 100;
-          // Liquidation price is when collateral value equals minimum required value
-          // borrowed * MIN_CR = alph * liquidationPrice * 100
-          // liquidationPrice = (borrowed * MIN_CR) / (alph * 100)
           const liqPrice = (borrowed * MIN_CR) / (alph * 100);
           const priceDrop = ((alphPrice - liqPrice) / alphPrice) * 100;
           
