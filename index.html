@@ -25,6 +25,19 @@
     h2 {
       text-align: center;
       color: #333;
+      margin-bottom: 5px;
+    }
+    .dapp-link {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .dapp-link a {
+      color: #3498db;
+      text-decoration: none;
+      font-size: 0.9em;
+    }
+    .dapp-link a:hover {
+      text-decoration: underline;
     }
     input {
       width: 100%;
@@ -94,11 +107,35 @@
       background: #3498db;
       cursor: pointer;
     }
+    .price-info {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+    .refresh-icon {
+      cursor: pointer;
+      color: #3498db;
+      font-size: 1.2em;
+    }
+    .refresh-icon:hover {
+      color: #2980b9;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .refreshing {
+      animation: spin 1s linear infinite;
+    }
   </style>
 </head>
 <body>
   <div class="calculator">
     <h2>ALPH Liquidation Calculator</h2>
+    <div class="dapp-link">
+      <a href="https://app.alphbanx.com/" target="_blank">Visit AlphBanx Dapp →</a>
+    </div>
     
     <label for="alph">ALPH Collateral Amount</label>
     <input type="number" id="alph" placeholder="Enter ALPH amount" oninput="updateCalculator()" />
@@ -117,7 +154,10 @@
       <div class="result" id="minRequired"></div>
     </div>
 
-    <div class="result" id="price">Loading ALPH price...</div>
+    <div class="result price-info">
+      <span id="price">Loading ALPH price...</span>
+      <span class="refresh-icon" onclick="manualRefresh()" title="Click to refresh">⟳</span>
+    </div>
 
     <div class="liquidation">
       <div class="result" id="liquidationPrice"></div>
@@ -129,18 +169,38 @@
 
   <script>
     let alphPrice = null;
+    let lastUpdateTime = null;
     const MIN_CR = 200; // Minimum Collateral Ratio (200%)
+    const REFRESH_INTERVAL = 30000; // 30 seconds in milliseconds
 
     async function fetchPrice() {
+      const refreshIcon = document.querySelector('.refresh-icon');
+      refreshIcon.classList.add('refreshing');
+      
       try {
         const res = await fetch('https://api.diadata.org/v1/assetQuotation/Alephium/tgx7VNFoP9DJiFMFgXXtafQZkUvyEdDHT9ryamHJYrjq');
         const data = await res.json();
         alphPrice = parseFloat(data.Price);
-        document.getElementById('price').textContent = `Current ALPH Price: $${alphPrice.toFixed(4)}`;
+        lastUpdateTime = new Date();
+        updatePriceDisplay();
         updateCalculator();
       } catch (err) {
         document.getElementById('price').textContent = 'Error fetching ALPH price';
+      } finally {
+        refreshIcon.classList.remove('refreshing');
       }
+    }
+
+    function updatePriceDisplay() {
+      if (alphPrice !== null && lastUpdateTime !== null) {
+        const timeStr = lastUpdateTime.toLocaleTimeString();
+        document.getElementById('price').textContent = 
+          `Current ALPH Price: $${alphPrice.toFixed(4)} (Updated: ${timeStr})`;
+      }
+    }
+
+    function manualRefresh() {
+      fetchPrice();
     }
 
     function updateFromSlider() {
@@ -217,9 +277,11 @@
       }
     }
 
+    // Initial fetch
     fetchPrice();
-    // Refresh price every minute
-    setInterval(fetchPrice, 60000);
+    
+    // Auto refresh every 30 seconds
+    setInterval(fetchPrice, REFRESH_INTERVAL);
   </script>
 </body>
 </html> 
