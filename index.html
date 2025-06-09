@@ -181,15 +181,18 @@
         
         if (borrowed > 0) {
           const currentCR = (totalValue / borrowed) * 100;
+          // Liquidation price is when collateral value equals minimum required value
+          // borrowed * MIN_CR = alph * liquidationPrice * 100
+          // liquidationPrice = (borrowed * MIN_CR) / (alph * 100)
           const liqPrice = (borrowed * MIN_CR) / (alph * 100);
           const priceDrop = ((alphPrice - liqPrice) / alphPrice) * 100;
-          const minAlphNeeded = (borrowed * MIN_CR) / (100 * alphPrice);
           
           collateralValue.textContent = `Collateral Value: $${totalValue.toFixed(2)}`;
           currentRatio.textContent = `Current Ratio: ${currentCR.toFixed(2)}%`;
           currentRatio.className = 'result ' + (currentCR >= MIN_CR ? 'safe' : 'warning');
           
           if (currentCR < MIN_CR) {
+            const minAlphNeeded = (borrowed * MIN_CR) / (100 * alphPrice);
             const additionalAlphNeeded = minAlphNeeded - alph;
             minRequired.textContent = `Need ${additionalAlphNeeded.toFixed(2)} more ALPH for minimum CR`;
             minRequired.className = 'result warning';
@@ -200,11 +203,11 @@
           
           liquidationPrice.textContent = `Liquidation Price: $${liqPrice.toFixed(4)}`;
           
-          if (currentCR >= MIN_CR) {
+          if (priceDrop > 0) {
             safetyMargin.textContent = `Price can drop ${priceDrop.toFixed(2)}% before liquidation`;
             safetyMargin.className = 'result safe';
           } else {
-            safetyMargin.textContent = 'WARNING: Not enough collateral!';
+            safetyMargin.textContent = 'WARNING: Below liquidation price!';
             safetyMargin.className = 'result warning';
           }
         } else {
