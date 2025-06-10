@@ -4,12 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ALPH Liquidation Calculator</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap"
-      rel="stylesheet"
-    />
 
     <style>
       /* ------------------------
@@ -58,7 +52,8 @@
         margin: 0;
         padding: 0;
         box-sizing: border-box;
-        font-family: "Poppins", sans-serif;
+        /* ️🚫 Poppins supprimée  */
+        font-family: system-ui, sans-serif;
       }
 
       html,
@@ -110,11 +105,10 @@
         -ms-overflow-style: none; /* IE 10+ */
         position: relative;
         z-index: 1;
-        transition: box-shadow 0.3s ease; /* removed transform transition */
+        transition: box-shadow 0.3s ease;
       }
 
       .calculator:hover {
-        /* Removed translateY to avoid unwanted movement */
         box-shadow: 0 18px 38px var(--shadow);
       }
 
@@ -347,13 +341,13 @@
         position: absolute;
         top: 16px;
         right: 16px;
-        width: 32px; /* compact */
-        height: 32px; /* compact */
+        width: 32px;
+        height: 32px;
         border-radius: 50%;
         border: none;
         background: var(--primary);
         color: #fff;
-        font-size: 1rem; /* compact */
+        font-size: 1rem;
         cursor: pointer;
         display: flex;
         justify-content: center;
@@ -494,7 +488,6 @@
       (function () {
         const themeToggle = document.getElementById("themeToggle");
         const root = document.documentElement;
-        // Check stored preference
         const storedTheme = localStorage.getItem("theme") || "light";
         root.setAttribute("data-theme", storedTheme);
         themeToggle.textContent = storedTheme === "dark" ? "☼" : "☾";
@@ -524,7 +517,6 @@
         borrowAmount.classList.add("editing");
         borrowAmount.focus();
 
-        // Select content
         const range = document.createRange();
         range.selectNodeContents(borrowAmount);
         const sel = window.getSelection();
@@ -539,7 +531,10 @@
           e.preventDefault();
           stopEditing();
         }
-        if (!/[\d\s\b]/.test(e.key) && !["ArrowLeft", "ArrowRight", "Delete", "Backspace"].includes(e.key)) {
+        if (
+          !/[\d\s\b]/.test(e.key) &&
+          !["ArrowLeft", "ArrowRight", "Delete", "Backspace"].includes(e.key)
+        ) {
           e.preventDefault();
         }
       }
@@ -571,7 +566,8 @@
           updatePriceDisplay();
           updateCalculator();
         } catch (err) {
-          document.getElementById("price").textContent = "Error fetching ALPH price";
+          document.getElementById("price").textContent =
+            "Error fetching ALPH price";
         } finally {
           icon.classList.remove("refreshing");
         }
@@ -580,7 +576,9 @@
       function updatePriceDisplay() {
         if (alphPrice !== null && lastUpdateTime !== null) {
           const timeStr = lastUpdateTime.toLocaleTimeString();
-          document.getElementById("price").textContent = `Current ALPH Price: $${alphPrice.toFixed(
+          document.getElementById(
+            "price"
+          ).textContent = `Current ALPH Price: $${alphPrice.toFixed(
             4
           )} (Updated: ${timeStr})`;
         }
@@ -592,14 +590,18 @@
 
       function updateFromSlider() {
         const sliderValue = document.getElementById("borrowSlider").value;
-        document.getElementById("borrowAmount").textContent = sliderValue + " ABD";
+        document.getElementById("borrowAmount").textContent =
+          sliderValue + " ABD";
         updateCalculator();
       }
 
       function updateCalculator() {
-        const alph = parseFloat(document.getElementById("alph").value) || 0;
-        const existingBorrow = parseFloat(document.getElementById("existingBorrow").value) || 0;
-        const borrowText = document.getElementById("borrowAmount").textContent;
+        const alph =
+          parseFloat(document.getElementById("alph").value) || 0;
+        const existingBorrow =
+          parseFloat(document.getElementById("existingBorrow").value) || 0;
+        const borrowText =
+          document.getElementById("borrowAmount").textContent;
         const additionalBorrow = parseFloat(borrowText) || 0;
         const totalBorrowed = existingBorrow + additionalBorrow;
 
@@ -615,21 +617,29 @@
         if (alph > 0 && alphPrice !== null) {
           const totalValue = alph * alphPrice;
           const maxBorrowAmount = (totalValue * 100) / MIN_CR;
-          const remainingBorrowable = Math.max(0, maxBorrowAmount - existingBorrow);
+          const remainingBorrowable = Math.max(
+            0,
+            maxBorrowAmount - existingBorrow
+          );
 
-          maxBorrow.textContent = `Maximum Additional Borrow: ${remainingBorrowable.toFixed(2)} ABD`;
+          maxBorrow.textContent = `Maximum Additional Borrow: ${remainingBorrowable.toFixed(
+            2
+          )} ABD`;
           slider.max = Math.floor(remainingBorrowable);
-          totalBorrow.textContent = `Total Borrowed: ${totalBorrowed.toFixed(2)} ABD`;
+          totalBorrow.textContent = `Total Borrowed: ${totalBorrowed.toFixed(
+            2
+          )} ABD`;
 
           if (totalBorrowed > 0) {
             const currentCR = (totalValue / totalBorrowed) * 100;
             const liqPrice = (totalBorrowed * MIN_CR) / (alph * 100);
             const priceDrop = ((alphPrice - liqPrice) / alphPrice) * 100;
 
-            collateralValue.textContent = `Collateral Value: $${totalValue.toFixed(2)}`;
+            collateralValue.textContent = `Collateral Value: $${totalValue.toFixed(
+              2
+            )}`;
             currentRatio.textContent = `Current Ratio: ${currentCR.toFixed(2)}%`;
 
-            // reset classes
             currentRatio.className = "result";
             minRequired.className = "result";
 
@@ -643,15 +653,18 @@
               minRequired.classList.add("safe");
             } else if (currentCR >= 225) {
               currentRatio.classList.add("caution");
-              minRequired.textContent = "Caution: Collateral ratio below 250%";
+              minRequired.textContent =
+                "Caution: Collateral ratio below 250%";
               minRequired.classList.add("caution");
             } else if (currentCR >= MIN_CR) {
               currentRatio.classList.add("warning");
-              minRequired.textContent = "Warning: Collateral ratio below 225%";
+              minRequired.textContent =
+                "Warning: Collateral ratio below 225%";
               minRequired.classList.add("warning");
             } else {
               currentRatio.classList.add("warning");
-              const minAlphNeeded = (totalBorrowed * MIN_CR) / (100 * alphPrice);
+              const minAlphNeeded =
+                (totalBorrowed * MIN_CR) / (100 * alphPrice);
               const additionalAlphNeeded = minAlphNeeded - alph;
               minRequired.textContent = `Danger: Need ${additionalAlphNeeded.toFixed(
                 2
@@ -659,10 +672,14 @@
               minRequired.classList.add("warning");
             }
 
-            liquidationPrice.textContent = `Liquidation Price: $${liqPrice.toFixed(4)}`;
+            liquidationPrice.textContent = `Liquidation Price: $${liqPrice.toFixed(
+              4
+            )}`;
 
             if (priceDrop > 0) {
-              safetyMargin.textContent = `Price can drop ${priceDrop.toFixed(2)}% before liquidation`;
+              safetyMargin.textContent = `Price can drop ${priceDrop.toFixed(
+                2
+              )}% before liquidation`;
               safetyMargin.className = "result";
               if (priceDrop >= 25) {
                 safetyMargin.classList.add("safe");
@@ -676,7 +693,9 @@
               safetyMargin.className = "result warning";
             }
           } else {
-            collateralValue.textContent = `Collateral Value: $${totalValue.toFixed(2)}`;
+            collateralValue.textContent = `Collateral Value: $${totalValue.toFixed(
+              2
+            )}`;
             currentRatio.textContent = "";
             minRequired.textContent = "";
             liquidationPrice.textContent = "";
@@ -694,7 +713,6 @@
         }
       }
 
-      // Initial price fetch and interval
       fetchPrice();
       setInterval(fetchPrice, REFRESH_INTERVAL);
     </script>
