@@ -178,6 +178,30 @@
       color: #666;
       margin-top: 2px;
     }
+    .footer {
+      text-align: center;
+      margin-top: 20px;
+      padding-top: 10px;
+      border-top: 1px solid #eee;
+      font-size: 0.8em;
+      color: #666;
+    }
+    .footer a {
+      color: #3498db;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+    .result.safe {
+      color: #2ecc71;
+    }
+    .result.warning {
+      color: #e74c3c;
+    }
+    .result.caution {
+      color: #f39c12;
+    }
   </style>
 </head>
 <body>
@@ -224,6 +248,10 @@
     </div>
 
     <div class="info">The minimum required collateral ratio is 200%. Keep your ratio above this to avoid liquidation risk.</div>
+
+    <div class="footer">
+      Built by <a href="https://x.com/notrustverif" target="_blank" rel="noopener noreferrer">@notrustverif</a> | <a href="https://notrustverify.ch" target="_blank" rel="noopener noreferrer">notrustverify.ch</a>
+    </div>
   </div>
 
   <script>
@@ -352,25 +380,45 @@
           
           collateralValue.textContent = `Collateral Value: $${totalValue.toFixed(2)}`;
           currentRatio.textContent = `Current Ratio: ${currentCR.toFixed(2)}%`;
-          currentRatio.className = 'result ' + (currentCR >= MIN_CR ? 'safe' : 'warning');
           
-          if (currentCR < MIN_CR) {
-            const minAlphNeeded = (totalBorrowed * MIN_CR) / (100 * alphPrice);
-            const additionalAlphNeeded = minAlphNeeded - alph;
-            minRequired.textContent = `Need ${additionalAlphNeeded.toFixed(2)} more ALPH for minimum CR`;
+          // Set color based on collateral ratio
+          if (currentCR >= 300) {
+            currentRatio.className = 'result safe';
+            minRequired.textContent = 'Safe: Very healthy collateral ratio';
+            minRequired.className = 'result safe';
+          } else if (currentCR >= 250) {
+            currentRatio.className = 'result safe';
+            minRequired.textContent = 'Safe: Good collateral ratio';
+            minRequired.className = 'result safe';
+          } else if (currentCR >= 225) {
+            currentRatio.className = 'result caution';
+            minRequired.textContent = 'Caution: Collateral ratio below 250%';
+            minRequired.className = 'result caution';
+          } else if (currentCR >= MIN_CR) {
+            currentRatio.className = 'result warning';
+            minRequired.textContent = 'Warning: Collateral ratio below 225%';
             minRequired.className = 'result warning';
           } else {
-            minRequired.textContent = `Safe: Above minimum ${MIN_CR}% ratio`;
-            minRequired.className = 'result safe';
+            currentRatio.className = 'result warning';
+            const minAlphNeeded = (totalBorrowed * MIN_CR) / (100 * alphPrice);
+            const additionalAlphNeeded = minAlphNeeded - alph;
+            minRequired.textContent = `Danger: Need ${additionalAlphNeeded.toFixed(2)} more ALPH to reach minimum 200%`;
+            minRequired.className = 'result warning';
           }
           
           liquidationPrice.textContent = `Liquidation Price: $${liqPrice.toFixed(4)}`;
           
           if (priceDrop > 0) {
             safetyMargin.textContent = `Price can drop ${priceDrop.toFixed(2)}% before liquidation`;
-            safetyMargin.className = 'result safe';
+            if (priceDrop >= 25) {
+              safetyMargin.className = 'result safe';
+            } else if (priceDrop >= 12.5) {
+              safetyMargin.className = 'result caution';
+            } else {
+              safetyMargin.className = 'result warning';
+            }
           } else {
-            safetyMargin.textContent = 'WARNING: Below liquidation price!';
+            safetyMargin.textContent = 'DANGER: Below liquidation price!';
             safetyMargin.className = 'result warning';
           }
         } else {
