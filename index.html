@@ -125,23 +125,21 @@
       background: #3498db;
       cursor: pointer;
     }
-    .borrow-controls {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 8px;
-    }
-    .borrow-input {
-      flex: 1;
-      padding: 6px;
-      border: 1px solid #ddd;
+    .borrow-amount {
+      display: inline-block;
+      min-width: 60px;
+      padding: 2px 4px;
+      border: 1px solid transparent;
       border-radius: 4px;
-      width: 100px;
-      font-size: 0.9em;
+      cursor: pointer;
     }
-    .borrow-input.invalid {
-      border-color: #e74c3c;
-      background-color: #ffd7d7;
+    .borrow-amount:hover {
+      background: #f0f0f0;
+    }
+    .borrow-amount.editing {
+      border-color: #3498db;
+      background: white;
+      cursor: text;
     }
     .price-info {
       display: flex;
@@ -168,6 +166,18 @@
     label {
       font-size: 0.9em;
     }
+    .input-group {
+      margin-bottom: 12px;
+    }
+    .input-group label {
+      display: block;
+      margin-bottom: 4px;
+    }
+    .input-description {
+      font-size: 0.8em;
+      color: #666;
+      margin-top: 2px;
+    }
   </style>
 </head>
 <body>
@@ -177,22 +187,27 @@
       <a href="https://app.alphbanx.com/" target="_blank">Visit AlphBanx Dapp →</a>
     </div>
     
-    <label for="alph">ALPH Collateral Amount</label>
-    <input type="number" id="alph" placeholder="Enter ALPH amount" oninput="updateCalculator()" />
+    <div class="input-group">
+      <label for="alph">ALPH Collateral Amount</label>
+      <input type="number" id="alph" placeholder="Enter ALPH amount" oninput="updateCalculator()" />
+    </div>
+
+    <div class="input-group">
+      <label for="existingBorrow">Current Borrowed ABD</label>
+      <input type="number" id="existingBorrow" placeholder="Enter existing borrowed ABD" oninput="updateCalculator()" />
+      <div class="input-description">Enter the amount you've already borrowed (if any)</div>
+    </div>
 
     <div class="borrow-info">
       <div class="result" id="maxBorrow"></div>
       <div class="slider-container">
         <div class="slider-label">
-          <span>ABD to Borrow:</span>
-          <span id="borrowAmount">0 ABD</span>
+          <span>Additional ABD to Borrow:</span>
+          <span id="borrowAmount" class="borrow-amount" onclick="startEditing()" onblur="stopEditing()">0 ABD</span>
         </div>
         <input type="range" id="borrowSlider" class="slider" min="0" max="1000" value="0" step="1" oninput="updateFromSlider()">
-        <div class="borrow-controls">
-          <input type="number" id="borrowInput" class="borrow-input" placeholder="Enter ABD" min="0" step="1" oninput="updateFromInput()">
-          <span>ABD</span>
-        </div>
       </div>
+      <div class="result" id="totalBorrow"></div>
       <div class="result" id="collateralValue"></div>
       <div class="result" id="currentRatio"></div>
       <div class="result" id="minRequired"></div>
@@ -216,6 +231,57 @@
     let lastUpdateTime = null;
     const MIN_CR = 200; // Minimum Collateral Ratio (200%)
     const REFRESH_INTERVAL = 30000; // 30 seconds in milliseconds
+
+    function startEditing() {
+      const borrowAmount = document.getElementById('borrowAmount');
+      const currentValue = parseInt(borrowAmount.textContent) || 0;
+      borrowAmount.textContent = currentValue;
+      borrowAmount.contentEditable = true;
+      borrowAmount.classList.add('editing');
+      borrowAmount.focus();
+      
+      // Select all text
+      const range = document.createRange();
+      range.selectNodeContents(borrowAmount);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      // Handle keyboard events
+      borrowAmount.addEventListener('keydown', handleKeyPress);
+    }
+
+    function handleKeyPress(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        stopEditing();
+      }
+      // Only allow numbers
+      if (!/[\d\s\b]/.test(e.key) && !['ArrowLeft', 'ArrowRight', 'Delete', 'Backspace'].includes(e.key)) {
+        e.preventDefault();
+      }
+    }
+
+    function stopEditing() {
+      const borrowAmount = document.getElementById('borrowAmount');
+      const slider = document.getElementById('borrowSlider');
+      borrowAmount.contentEditable = false;
+      borrowAmount.classList.remove('editing');
+      
+      // Clean up and validate the value
+      let value = parseInt(borrowAmount.textContent) || 0;
+      const maxValue = parseInt(slider.max);
+      if (value > maxValue) value = maxValue;
+      
+      // Update the display and slider
+      borrowAmount.textContent = value + ' ABD';
+      slider.value = value;
+      
+      // Remove keyboard event listener
+      borrowAmount.removeEventListener('keydown', handleKeyPress);
+      
+      updateCalculator();
+    }
 
     async function fetchPrice() {
       const refreshIcon = document.querySelector('.refresh-icon');
@@ -250,34 +316,15 @@
     function updateFromSlider() {
       const sliderValue = document.getElementById('borrowSlider').value;
       document.getElementById('borrowAmount').textContent = sliderValue + ' ABD';
-      document.getElementById('borrowInput').value = sliderValue;
-      updateCalculator();
-    }
-
-    function updateFromInput() {
-      const input = document.getElementById('borrowInput');
-      const slider = document.getElementById('borrowSlider');
-      let value = parseFloat(input.value) || 0;
-      
-      // Ensure value is within bounds
-      const maxValue = parseFloat(slider.max);
-      if (value > maxValue) {
-        value = maxValue;
-        input.value = maxValue;
-      }
-      
-      slider.value = value;
-      document.getElementById('borrowAmount').textContent = value + ' ABD';
-      
-      // Visual feedback
-      input.classList.toggle('invalid', value > maxValue);
-      
       updateCalculator();
     }
 
     function updateCalculator() {
-      const alph = parseFloat(document.getElementById('alph').value);
-      const borrowed = parseFloat(document.getElementById('borrowSlider').value) || 0;
+      const alph = parseFloat(document.getElementById('alph').value) || 0;
+      const existingBorrow = parseFloat(document.getElementById('existingBorrow').value) || 0;
+      const borrowText = document.getElementById('borrowAmount').textContent;
+      const additionalBorrow = parseFloat(borrowText) || 0;
+      const totalBorrowed = existingBorrow + additionalBorrow;
       
       const collateralValue = document.getElementById('collateralValue');
       const currentRatio = document.getElementById('currentRatio');
@@ -285,28 +332,22 @@
       const liquidationPrice = document.getElementById('liquidationPrice');
       const safetyMargin = document.getElementById('safetyMargin');
       const maxBorrow = document.getElementById('maxBorrow');
+      const totalBorrow = document.getElementById('totalBorrow');
       const slider = document.getElementById('borrowSlider');
-      const borrowInput = document.getElementById('borrowInput');
 
       if (alph > 0 && alphPrice !== null) {
         const totalValue = alph * alphPrice;
         const maxBorrowAmount = totalValue * (100 / MIN_CR);
+        const remainingBorrowable = Math.max(0, maxBorrowAmount - existingBorrow);
         
         // Update max borrow and slider max
-        maxBorrow.textContent = `Maximum Borrow: ${maxBorrowAmount.toFixed(2)} ABD`;
-        slider.max = Math.floor(maxBorrowAmount);
-        borrowInput.max = Math.floor(maxBorrowAmount);
+        maxBorrow.textContent = `Maximum Additional Borrow: ${remainingBorrowable.toFixed(2)} ABD`;
+        slider.max = Math.floor(remainingBorrowable);
+        totalBorrow.textContent = `Total Borrowed: ${totalBorrowed.toFixed(2)} ABD`;
         
-        // Ensure borrowed amount doesn't exceed new max
-        if (borrowed > maxBorrowAmount) {
-          slider.value = Math.floor(maxBorrowAmount);
-          borrowInput.value = Math.floor(maxBorrowAmount);
-          document.getElementById('borrowAmount').textContent = Math.floor(maxBorrowAmount) + ' ABD';
-        }
-        
-        if (borrowed > 0) {
-          const currentCR = (totalValue / borrowed) * 100;
-          const liqPrice = (borrowed * MIN_CR) / (alph * 100);
+        if (totalBorrowed > 0) {
+          const currentCR = (totalValue / totalBorrowed) * 100;
+          const liqPrice = (totalBorrowed * MIN_CR) / (alph * 100);
           const priceDrop = ((alphPrice - liqPrice) / alphPrice) * 100;
           
           collateralValue.textContent = `Collateral Value: $${totalValue.toFixed(2)}`;
@@ -314,7 +355,7 @@
           currentRatio.className = 'result ' + (currentCR >= MIN_CR ? 'safe' : 'warning');
           
           if (currentCR < MIN_CR) {
-            const minAlphNeeded = (borrowed * MIN_CR) / (100 * alphPrice);
+            const minAlphNeeded = (totalBorrowed * MIN_CR) / (100 * alphPrice);
             const additionalAlphNeeded = minAlphNeeded - alph;
             minRequired.textContent = `Need ${additionalAlphNeeded.toFixed(2)} more ALPH for minimum CR`;
             minRequired.className = 'result warning';
@@ -338,6 +379,7 @@
           minRequired.textContent = '';
           liquidationPrice.textContent = '';
           safetyMargin.textContent = '';
+          totalBorrow.textContent = '';
         }
       } else {
         maxBorrow.textContent = '';
@@ -346,6 +388,7 @@
         minRequired.textContent = '';
         liquidationPrice.textContent = '';
         safetyMargin.textContent = '';
+        totalBorrow.textContent = '';
       }
     }
 
