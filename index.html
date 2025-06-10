@@ -1,450 +1,702 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ALPH Liquidation Calculator</title>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      overflow: hidden;
-    }
-    body {
-      font-family: Arial, sans-serif;
-      background: #f0f0f0;
-      padding: 10px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      box-sizing: border-box;
-    }
-    .calculator {
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      width: 100%;
-      max-width: 340px;
-      box-sizing: border-box;
-      max-height: 100vh;
-      overflow: auto;
-      -ms-overflow-style: none;  /* Hide scrollbar for IE and Edge */
-      scrollbar-width: none;  /* Hide scrollbar for Firefox */
-    }
-    .calculator::-webkit-scrollbar {
-      display: none;  /* Hide scrollbar for Chrome, Safari and Opera */
-    }
-    h2 {
-      text-align: center;
-      color: #333;
-      margin: 0 0 5px 0;
-      font-size: 1.3em;
-    }
-    .dapp-link {
-      text-align: center;
-      margin-bottom: 10px;
-    }
-    .dapp-link a {
-      color: #3498db;
-      text-decoration: none;
-      font-size: 0.9em;
-    }
-    .dapp-link a:hover {
-      text-decoration: underline;
-    }
-    input {
-      width: 100%;
-      padding: 6px;
-      margin: 4px 0 8px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      box-sizing: border-box;
-    }
-    .result {
-      margin-top: 8px;
-      padding: 4px;
-      text-align: center;
-      font-weight: bold;
-      font-size: 0.9em;
-    }
-    .info {
-      font-size: 0.8em;
-      color: #666;
-      text-align: center;
-      margin-top: 8px;
-    }
-    .warning {
-      color: #e74c3c;
-    }
-    .safe {
-      color: #2ecc71;
-    }
-    .liquidation {
-      margin-top: 10px;
-      padding: 10px 0;
-      border-top: 1px solid #eee;
-    }
-    .borrow-info {
-      background: #f8f9fa;
-      padding: 10px;
-      border-radius: 6px;
-      margin: 8px 0;
-    }
-    .slider-container {
-      margin: 10px 0;
-    }
-    .slider-label {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 4px;
-      font-size: 0.9em;
-    }
-    .slider {
-      width: 100%;
-      height: 8px;
-      border-radius: 4px;
-      background: #ddd;
-      outline: none;
-      -webkit-appearance: none;
-      margin: 8px 0;
-    }
-    .slider::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: #3498db;
-      cursor: pointer;
-    }
-    .slider::-moz-range-thumb {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: #3498db;
-      cursor: pointer;
-    }
-    .borrow-amount {
-      display: inline-block;
-      min-width: 60px;
-      padding: 2px 4px;
-      border: 1px solid transparent;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    .borrow-amount:hover {
-      background: #f0f0f0;
-    }
-    .borrow-amount.editing {
-      border-color: #3498db;
-      background: white;
-      cursor: text;
-    }
-    .price-info {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.9em;
-    }
-    .refresh-icon {
-      cursor: pointer;
-      color: #3498db;
-      font-size: 1.1em;
-    }
-    .refresh-icon:hover {
-      color: #2980b9;
-    }
-    @keyframes spin {
-      from { transform: rotate(0deg); }
-      to { transform: rotate(360deg); }
-    }
-    .refreshing {
-      animation: spin 1s linear infinite;
-    }
-    label {
-      font-size: 0.9em;
-    }
-    .input-group {
-      margin-bottom: 12px;
-    }
-    .input-group label {
-      display: block;
-      margin-bottom: 4px;
-    }
-    .input-description {
-      font-size: 0.8em;
-      color: #666;
-      margin-top: 2px;
-    }
-    .footer {
-      text-align: center;
-      margin-top: 20px;
-      padding-top: 10px;
-      border-top: 1px solid #eee;
-      font-size: 0.8em;
-      color: #666;
-    }
-    .footer a {
-      color: #3498db;
-      text-decoration: none;
-    }
-    .footer a:hover {
-      text-decoration: underline;
-    }
-    .result.safe {
-      color: #2ecc71;
-    }
-    .result.warning {
-      color: #e74c3c;
-    }
-    .result.caution {
-      color: #f39c12;
-    }
-  </style>
-</head>
-<body>
-  <div class="calculator">
-    <h2>ALPH Liquidation Calculator</h2>
-    <div class="dapp-link">
-      <a href="https://app.alphbanx.com/" target="_blank">Visit AlphBanx Dapp →</a>
-    </div>
-    
-    <div class="input-group">
-      <label for="alph">ALPH Collateral Amount</label>
-      <input type="number" id="alph" placeholder="Enter ALPH amount" oninput="updateCalculator()" />
-    </div>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ALPH Liquidation Calculator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
 
-    <div class="input-group">
-      <label for="existingBorrow">Current Borrowed ABD</label>
-      <input type="number" id="existingBorrow" placeholder="Enter existing borrowed ABD" oninput="updateCalculator()" />
-      <div class="input-description">Enter the amount you've already borrowed (if any)</div>
-    </div>
+    <style>
+      /* ------------------------
+         THEME VARIABLES
+      -------------------------*/
+      :root {
+        --bg: #f0f0f0;
+        --grad-bg: linear-gradient(135deg, #f0f0f0 0%, #ffffff 100%);
+        --container-bg: #ffffff;
+        --text: #333333;
+        --subtext: #666666;
+        --primary: #3498db;
+        --primary-hover: #2980b9;
+        --safe: #2ecc71;
+        --warning: #e74c3c;
+        --caution: #f39c12;
+        --border: #e0e0e0;
+        --shadow: rgba(0, 0, 0, 0.1);
+        --input-bg: #ffffff;
+        --input-border: #dddddd;
+      }
 
-    <div class="borrow-info">
-      <div class="result" id="maxBorrow"></div>
-      <div class="slider-container">
-        <div class="slider-label">
-          <span>Additional ABD to Borrow:</span>
-          <span id="borrowAmount" class="borrow-amount" onclick="startEditing()" onblur="stopEditing()">0 ABD</span>
-        </div>
-        <input type="range" id="borrowSlider" class="slider" min="0" max="1000" value="0" step="1" oninput="updateFromSlider()">
+      [data-theme="dark"] {
+        --bg: #1f1f1f;
+        --grad-bg: linear-gradient(135deg, #1f1f1f 0%, #292929 100%);
+        --container-bg: #2b2b2b;
+        --text: #ffffff;
+        --subtext: #aaaaaa;
+        --primary: #a8e063;
+        --primary-hover: #c2ff9f;
+        --safe: #56ab2f;
+        --warning: #ff6f61;
+        --caution: #f39c12;
+        --border: #444444;
+        --shadow: rgba(0, 0, 0, 0.6);
+        --input-bg: #444444;
+        --input-border: #555555;
+      }
+
+      /* ------------------------
+         RESET + GLOBALS
+      -------------------------*/
+      *,
+      *::before,
+      *::after {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Poppins", sans-serif;
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+
+      body {
+        background: var(--grad-bg);
+        color: var(--text);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      /* subtle grid overlay for dark theme */
+      body::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: repeating-linear-gradient(
+          45deg,
+          rgba(255, 255, 255, 0.05),
+          rgba(255, 255, 255, 0.05) 10px,
+          transparent 10px,
+          transparent 20px
+        );
+        opacity: 0.08;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      /* ------------------------
+         CALCULATOR CONTAINER
+      -------------------------*/
+      .calculator {
+        width: 100%;
+        max-width: 380px;
+        background: var(--container-bg);
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 12px 32px var(--shadow);
+        overflow-y: auto;
+        max-height: 95vh;
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE 10+ */
+        position: relative;
+        z-index: 1;
+        transition: box-shadow 0.3s ease; /* removed transform transition */
+      }
+
+      .calculator:hover {
+        /* Removed translateY to avoid unwanted movement */
+        box-shadow: 0 18px 38px var(--shadow);
+      }
+
+      .calculator::-webkit-scrollbar {
+        display: none; /* Chrome, Safari, Opera */
+      }
+
+      h2 {
+        text-align: center;
+        font-size: 1.6rem;
+        margin-bottom: 12px;
+        background: linear-gradient(90deg, var(--primary) 0%, var(--primary-hover) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      /* ------------------------
+         EXTERNAL LINK
+      -------------------------*/
+      .dapp-link {
+        text-align: center;
+        margin-bottom: 18px;
+      }
+
+      .dapp-link a {
+        text-decoration: none;
+        font-size: 0.9rem;
+        color: var(--primary);
+      }
+
+      .dapp-link a:hover {
+        text-decoration: underline;
+        color: var(--primary-hover);
+      }
+
+      /* ------------------------
+         INPUTS & GROUPS
+      -------------------------*/
+      .input-group {
+        margin-bottom: 18px;
+      }
+
+      .input-group label {
+        display: block;
+        font-size: 0.9rem;
+        margin-bottom: 6px;
+      }
+
+      input[type="number"] {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--input-border);
+        background: var(--input-bg);
+        color: var(--text);
+        font-size: 1rem;
+        transition: border-color 0.25s ease, box-shadow 0.25s ease;
+      }
+
+      input[type="number"]:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.25);
+      }
+
+      .input-description {
+        font-size: 0.8rem;
+        color: var(--subtext);
+        margin-top: 4px;
+      }
+
+      /* ------------------------
+         SLIDER
+      -------------------------*/
+      .slider-container {
+        margin: 12px 0 8px;
+      }
+
+      .slider-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        margin-bottom: 6px;
+      }
+
+      .borrow-amount {
+        display: inline-block;
+        min-width: 60px;
+        padding: 2px 4px;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+
+      .borrow-amount:hover {
+        background: var(--bg);
+      }
+
+      .borrow-amount.editing {
+        border-color: var(--primary);
+        background: var(--container-bg);
+        cursor: text;
+      }
+
+      input[type="range"].slider {
+        -webkit-appearance: none;
+        width: 100%;
+        height: 10px;
+        border-radius: 5px;
+        background: var(--input-border);
+        outline: none;
+      }
+
+      input[type="range"].slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: var(--primary);
+        cursor: pointer;
+        transition: background 0.3s ease;
+      }
+
+      input[type="range"].slider::-webkit-slider-thumb:hover {
+        background: var(--primary-hover);
+      }
+
+      input[type="range"].slider::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: var(--primary);
+        cursor: pointer;
+        transition: background 0.3s ease;
+      }
+
+      /* ------------------------
+         RESULTS & STATUS TEXT
+      -------------------------*/
+      .result {
+        text-align: center;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-top: 6px;
+      }
+
+      .result.safe {
+        color: var(--safe);
+      }
+      .result.warning {
+        color: var(--warning);
+      }
+      .result.caution {
+        color: var(--caution);
+      }
+
+      /* ------------------------
+         PRICE & LIQUIDATION INFO
+      -------------------------*/
+      .price-info {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.9rem;
+        margin-top: 12px;
+      }
+
+      .refresh-icon {
+        font-size: 1.2rem;
+        cursor: pointer;
+        color: var(--primary);
+        transition: transform 0.6s linear;
+      }
+
+      .refresh-icon:hover {
+        color: var(--primary-hover);
+      }
+
+      .refreshing {
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .liquidation {
+        margin-top: 16px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+      }
+
+      .borrow-info {
+        background: var(--bg);
+        padding: 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+      }
+
+      /* ------------------------
+         FOOTER
+      -------------------------*/
+      .footer {
+        margin-top: 24px;
+        font-size: 0.8rem;
+        text-align: center;
+        color: var(--subtext);
+        border-top: 1px solid var(--border);
+        padding-top: 12px;
+      }
+
+      .footer a {
+        color: var(--primary);
+        text-decoration: none;
+      }
+
+      .footer a:hover {
+        text-decoration: underline;
+        color: var(--primary-hover);
+      }
+
+      /* ------------------------
+         THEME TOGGLE BUTTON
+      -------------------------*/
+      #themeToggle {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        width: 32px; /* compact */
+        height: 32px; /* compact */
+        border-radius: 50%;
+        border: none;
+        background: var(--primary);
+        color: #fff;
+        font-size: 1rem; /* compact */
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 4px 10px var(--shadow);
+        transition: background 0.3s ease, transform 0.3s ease;
+        z-index: 2;
+      }
+
+      #themeToggle:hover {
+        background: var(--primary-hover);
+        transform: translateY(-2px);
+      }
+
+      /* ------------------------
+         MEDIA QUERIES
+      -------------------------*/
+      @media (max-width: 420px) {
+        .calculator {
+          padding: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="calculator">
+      <button id="themeToggle" aria-label="Toggle dark mode">☾</button>
+      <h2>ALPH Liquidation Calculator</h2>
+      <div class="dapp-link">
+        <a href="https://app.alphbanx.com/" target="_blank" rel="noopener"
+          >Visit AlphBanx Dapp →</a
+        >
       </div>
-      <div class="result" id="totalBorrow"></div>
-      <div class="result" id="collateralValue"></div>
-      <div class="result" id="currentRatio"></div>
-      <div class="result" id="minRequired"></div>
+
+      <!-- Collateral input -->
+      <div class="input-group">
+        <label for="alph">ALPH Collateral Amount</label>
+        <input
+          type="number"
+          id="alph"
+          placeholder="Enter ALPH amount"
+          oninput="updateCalculator()"
+        />
+      </div>
+
+      <!-- Existing borrow input -->
+      <div class="input-group">
+        <label for="existingBorrow">Current Borrowed ABD</label>
+        <input
+          type="number"
+          id="existingBorrow"
+          placeholder="Enter existing borrowed ABD"
+          oninput="updateCalculator()"
+        />
+        <div class="input-description">
+          Enter the amount you've already borrowed (if any)
+        </div>
+      </div>
+
+      <!-- Borrow info section -->
+      <div class="borrow-info">
+        <div class="result" id="maxBorrow"></div>
+
+        <div class="slider-container">
+          <div class="slider-label">
+            <span>Additional ABD to Borrow:</span>
+            <span
+              id="borrowAmount"
+              class="borrow-amount"
+              onclick="startEditing()"
+              onblur="stopEditing()"
+              >0 ABD</span
+            >
+          </div>
+          <input
+            type="range"
+            id="borrowSlider"
+            class="slider"
+            min="0"
+            max="1000"
+            value="0"
+            step="1"
+            oninput="updateFromSlider()"
+          />
+        </div>
+
+        <div class="result" id="totalBorrow"></div>
+        <div class="result" id="collateralValue"></div>
+        <div class="result" id="currentRatio"></div>
+        <div class="result" id="minRequired"></div>
+      </div>
+
+      <!-- Price info -->
+      <div class="result price-info">
+        <span id="price">Loading ALPH price...</span>
+        <span
+          class="refresh-icon"
+          onclick="manualRefresh()"
+          title="Click to refresh"
+          >⟳</span
+        >
+      </div>
+
+      <!-- Liquidation info -->
+      <div class="liquidation">
+        <div class="result" id="liquidationPrice"></div>
+        <div class="result" id="safetyMargin"></div>
+      </div>
+
+      <div class="result info">
+        The minimum required collateral ratio is 200%. Keep your ratio above
+        this to avoid liquidation risk.
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        Built by
+        <a
+          href="https://x.com/notrustverif"
+          target="_blank"
+          rel="noopener noreferrer"
+          >@notrustverif</a
+        >
+        |
+        <a
+          href="https://notrustverify.ch"
+          target="_blank"
+          rel="noopener noreferrer"
+          >notrustverify.ch</a
+        >
+      </div>
     </div>
 
-    <div class="result price-info">
-      <span id="price">Loading ALPH price...</span>
-      <span class="refresh-icon" onclick="manualRefresh()" title="Click to refresh">⟳</span>
-    </div>
+    <script>
+      /***********************
+       *  THEME HANDLING    *
+       ***********************/
+      (function () {
+        const themeToggle = document.getElementById("themeToggle");
+        const root = document.documentElement;
+        // Check stored preference
+        const storedTheme = localStorage.getItem("theme") || "light";
+        root.setAttribute("data-theme", storedTheme);
+        themeToggle.textContent = storedTheme === "dark" ? "☼" : "☾";
 
-    <div class="liquidation">
-      <div class="result" id="liquidationPrice"></div>
-      <div class="result" id="safetyMargin"></div>
-    </div>
+        themeToggle.addEventListener("click", () => {
+          const current = root.getAttribute("data-theme");
+          const next = current === "dark" ? "light" : "dark";
+          root.setAttribute("data-theme", next);
+          localStorage.setItem("theme", next);
+          themeToggle.textContent = next === "dark" ? "☼" : "☾";
+        });
+      })();
 
-    <div class="info">The minimum required collateral ratio is 200%. Keep your ratio above this to avoid liquidation risk.</div>
+      /***********************
+       *  CALCULATOR LOGIC  *
+       ***********************/
+      let alphPrice = null;
+      let lastUpdateTime = null;
+      const MIN_CR = 200; // 200%
+      const REFRESH_INTERVAL = 30000; // 30s
 
-    <div class="footer">
-      Built by <a href="https://x.com/notrustverif" target="_blank" rel="noopener noreferrer">@notrustverif</a> | <a href="https://notrustverify.ch" target="_blank" rel="noopener noreferrer">notrustverify.ch</a>
-    </div>
-  </div>
+      function startEditing() {
+        const borrowAmount = document.getElementById("borrowAmount");
+        const currentValue = parseInt(borrowAmount.textContent) || 0;
+        borrowAmount.textContent = currentValue;
+        borrowAmount.contentEditable = true;
+        borrowAmount.classList.add("editing");
+        borrowAmount.focus();
 
-  <script>
-    let alphPrice = null;
-    let lastUpdateTime = null;
-    const MIN_CR = 200; // Minimum Collateral Ratio (200%)
-    const REFRESH_INTERVAL = 30000; // 30 seconds in milliseconds
+        // Select content
+        const range = document.createRange();
+        range.selectNodeContents(borrowAmount);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
 
-    function startEditing() {
-      const borrowAmount = document.getElementById('borrowAmount');
-      const currentValue = parseInt(borrowAmount.textContent) || 0;
-      borrowAmount.textContent = currentValue;
-      borrowAmount.contentEditable = true;
-      borrowAmount.classList.add('editing');
-      borrowAmount.focus();
-      
-      // Select all text
-      const range = document.createRange();
-      range.selectNodeContents(borrowAmount);
-      const selection = window.getSelection();
-      selection.removeAllRanges();
-      selection.addRange(range);
-
-      // Handle keyboard events
-      borrowAmount.addEventListener('keydown', handleKeyPress);
-    }
-
-    function handleKeyPress(e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        stopEditing();
+        borrowAmount.addEventListener("keydown", handleKeyPress);
       }
-      // Only allow numbers
-      if (!/[\d\s\b]/.test(e.key) && !['ArrowLeft', 'ArrowRight', 'Delete', 'Backspace'].includes(e.key)) {
-        e.preventDefault();
+
+      function handleKeyPress(e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          stopEditing();
+        }
+        if (!/[\d\s\b]/.test(e.key) && !["ArrowLeft", "ArrowRight", "Delete", "Backspace"].includes(e.key)) {
+          e.preventDefault();
+        }
       }
-    }
 
-    function stopEditing() {
-      const borrowAmount = document.getElementById('borrowAmount');
-      const slider = document.getElementById('borrowSlider');
-      borrowAmount.contentEditable = false;
-      borrowAmount.classList.remove('editing');
-      
-      // Clean up and validate the value
-      let value = parseInt(borrowAmount.textContent) || 0;
-      const maxValue = parseInt(slider.max);
-      if (value > maxValue) value = maxValue;
-      
-      // Update the display and slider
-      borrowAmount.textContent = value + ' ABD';
-      slider.value = value;
-      
-      // Remove keyboard event listener
-      borrowAmount.removeEventListener('keydown', handleKeyPress);
-      
-      updateCalculator();
-    }
-
-    async function fetchPrice() {
-      const refreshIcon = document.querySelector('.refresh-icon');
-      refreshIcon.classList.add('refreshing');
-      
-      try {
-        const res = await fetch('https://api.diadata.org/v1/assetQuotation/Alephium/tgx7VNFoP9DJiFMFgXXtafQZkUvyEdDHT9ryamHJYrjq');
-        const data = await res.json();
-        alphPrice = parseFloat(data.Price);
-        lastUpdateTime = new Date();
-        updatePriceDisplay();
+      function stopEditing() {
+        const borrowAmount = document.getElementById("borrowAmount");
+        const slider = document.getElementById("borrowSlider");
+        borrowAmount.contentEditable = false;
+        borrowAmount.classList.remove("editing");
+        let value = parseInt(borrowAmount.textContent) || 0;
+        const maxValue = parseInt(slider.max);
+        if (value > maxValue) value = maxValue;
+        borrowAmount.textContent = value + " ABD";
+        slider.value = value;
+        borrowAmount.removeEventListener("keydown", handleKeyPress);
         updateCalculator();
-      } catch (err) {
-        document.getElementById('price').textContent = 'Error fetching ALPH price';
-      } finally {
-        refreshIcon.classList.remove('refreshing');
       }
-    }
 
-    function updatePriceDisplay() {
-      if (alphPrice !== null && lastUpdateTime !== null) {
-        const timeStr = lastUpdateTime.toLocaleTimeString();
-        document.getElementById('price').textContent = 
-          `Current ALPH Price: $${alphPrice.toFixed(4)} (Updated: ${timeStr})`;
+      async function fetchPrice() {
+        const icon = document.querySelector(".refresh-icon");
+        icon.classList.add("refreshing");
+        try {
+          const res = await fetch(
+            "https://api.diadata.org/v1/assetQuotation/Alephium/tgx7VNFoP9DJiFMFgXXtafQZkUvyEdDHT9ryamHJYrjq"
+          );
+          const data = await res.json();
+          alphPrice = parseFloat(data.Price);
+          lastUpdateTime = new Date();
+          updatePriceDisplay();
+          updateCalculator();
+        } catch (err) {
+          document.getElementById("price").textContent = "Error fetching ALPH price";
+        } finally {
+          icon.classList.remove("refreshing");
+        }
       }
-    }
 
-    function manualRefresh() {
-      fetchPrice();
-    }
+      function updatePriceDisplay() {
+        if (alphPrice !== null && lastUpdateTime !== null) {
+          const timeStr = lastUpdateTime.toLocaleTimeString();
+          document.getElementById("price").textContent = `Current ALPH Price: $${alphPrice.toFixed(
+            4
+          )} (Updated: ${timeStr})`;
+        }
+      }
 
-    function updateFromSlider() {
-      const sliderValue = document.getElementById('borrowSlider').value;
-      document.getElementById('borrowAmount').textContent = sliderValue + ' ABD';
-      updateCalculator();
-    }
+      function manualRefresh() {
+        fetchPrice();
+      }
 
-    function updateCalculator() {
-      const alph = parseFloat(document.getElementById('alph').value) || 0;
-      const existingBorrow = parseFloat(document.getElementById('existingBorrow').value) || 0;
-      const borrowText = document.getElementById('borrowAmount').textContent;
-      const additionalBorrow = parseFloat(borrowText) || 0;
-      const totalBorrowed = existingBorrow + additionalBorrow;
-      
-      const collateralValue = document.getElementById('collateralValue');
-      const currentRatio = document.getElementById('currentRatio');
-      const minRequired = document.getElementById('minRequired');
-      const liquidationPrice = document.getElementById('liquidationPrice');
-      const safetyMargin = document.getElementById('safetyMargin');
-      const maxBorrow = document.getElementById('maxBorrow');
-      const totalBorrow = document.getElementById('totalBorrow');
-      const slider = document.getElementById('borrowSlider');
+      function updateFromSlider() {
+        const sliderValue = document.getElementById("borrowSlider").value;
+        document.getElementById("borrowAmount").textContent = sliderValue + " ABD";
+        updateCalculator();
+      }
 
-      if (alph > 0 && alphPrice !== null) {
-        const totalValue = alph * alphPrice;
-        const maxBorrowAmount = totalValue * (100 / MIN_CR);
-        const remainingBorrowable = Math.max(0, maxBorrowAmount - existingBorrow);
-        
-        // Update max borrow and slider max
-        maxBorrow.textContent = `Maximum Additional Borrow: ${remainingBorrowable.toFixed(2)} ABD`;
-        slider.max = Math.floor(remainingBorrowable);
-        totalBorrow.textContent = `Total Borrowed: ${totalBorrowed.toFixed(2)} ABD`;
-        
-        if (totalBorrowed > 0) {
-          const currentCR = (totalValue / totalBorrowed) * 100;
-          const liqPrice = (totalBorrowed * MIN_CR) / (alph * 100);
-          const priceDrop = ((alphPrice - liqPrice) / alphPrice) * 100;
-          
-          collateralValue.textContent = `Collateral Value: $${totalValue.toFixed(2)}`;
-          currentRatio.textContent = `Current Ratio: ${currentCR.toFixed(2)}%`;
-          
-          // Set color based on collateral ratio
-          if (currentCR >= 300) {
-            currentRatio.className = 'result safe';
-            minRequired.textContent = 'Safe: Very healthy collateral ratio';
-            minRequired.className = 'result safe';
-          } else if (currentCR >= 250) {
-            currentRatio.className = 'result safe';
-            minRequired.textContent = 'Safe: Good collateral ratio';
-            minRequired.className = 'result safe';
-          } else if (currentCR >= 225) {
-            currentRatio.className = 'result caution';
-            minRequired.textContent = 'Caution: Collateral ratio below 250%';
-            minRequired.className = 'result caution';
-          } else if (currentCR >= MIN_CR) {
-            currentRatio.className = 'result warning';
-            minRequired.textContent = 'Warning: Collateral ratio below 225%';
-            minRequired.className = 'result warning';
-          } else {
-            currentRatio.className = 'result warning';
-            const minAlphNeeded = (totalBorrowed * MIN_CR) / (100 * alphPrice);
-            const additionalAlphNeeded = minAlphNeeded - alph;
-            minRequired.textContent = `Danger: Need ${additionalAlphNeeded.toFixed(2)} more ALPH to reach minimum 200%`;
-            minRequired.className = 'result warning';
-          }
-          
-          liquidationPrice.textContent = `Liquidation Price: $${liqPrice.toFixed(4)}`;
-          
-          if (priceDrop > 0) {
-            safetyMargin.textContent = `Price can drop ${priceDrop.toFixed(2)}% before liquidation`;
-            if (priceDrop >= 25) {
-              safetyMargin.className = 'result safe';
-            } else if (priceDrop >= 12.5) {
-              safetyMargin.className = 'result caution';
+      function updateCalculator() {
+        const alph = parseFloat(document.getElementById("alph").value) || 0;
+        const existingBorrow = parseFloat(document.getElementById("existingBorrow").value) || 0;
+        const borrowText = document.getElementById("borrowAmount").textContent;
+        const additionalBorrow = parseFloat(borrowText) || 0;
+        const totalBorrowed = existingBorrow + additionalBorrow;
+
+        const collateralValue = document.getElementById("collateralValue");
+        const currentRatio = document.getElementById("currentRatio");
+        const minRequired = document.getElementById("minRequired");
+        const liquidationPrice = document.getElementById("liquidationPrice");
+        const safetyMargin = document.getElementById("safetyMargin");
+        const maxBorrow = document.getElementById("maxBorrow");
+        const totalBorrow = document.getElementById("totalBorrow");
+        const slider = document.getElementById("borrowSlider");
+
+        if (alph > 0 && alphPrice !== null) {
+          const totalValue = alph * alphPrice;
+          const maxBorrowAmount = (totalValue * 100) / MIN_CR;
+          const remainingBorrowable = Math.max(0, maxBorrowAmount - existingBorrow);
+
+          maxBorrow.textContent = `Maximum Additional Borrow: ${remainingBorrowable.toFixed(2)} ABD`;
+          slider.max = Math.floor(remainingBorrowable);
+          totalBorrow.textContent = `Total Borrowed: ${totalBorrowed.toFixed(2)} ABD`;
+
+          if (totalBorrowed > 0) {
+            const currentCR = (totalValue / totalBorrowed) * 100;
+            const liqPrice = (totalBorrowed * MIN_CR) / (alph * 100);
+            const priceDrop = ((alphPrice - liqPrice) / alphPrice) * 100;
+
+            collateralValue.textContent = `Collateral Value: $${totalValue.toFixed(2)}`;
+            currentRatio.textContent = `Current Ratio: ${currentCR.toFixed(2)}%`;
+
+            // reset classes
+            currentRatio.className = "result";
+            minRequired.className = "result";
+
+            if (currentCR >= 300) {
+              currentRatio.classList.add("safe");
+              minRequired.textContent = "Safe: Very healthy collateral ratio";
+              minRequired.classList.add("safe");
+            } else if (currentCR >= 250) {
+              currentRatio.classList.add("safe");
+              minRequired.textContent = "Safe: Good collateral ratio";
+              minRequired.classList.add("safe");
+            } else if (currentCR >= 225) {
+              currentRatio.classList.add("caution");
+              minRequired.textContent = "Caution: Collateral ratio below 250%";
+              minRequired.classList.add("caution");
+            } else if (currentCR >= MIN_CR) {
+              currentRatio.classList.add("warning");
+              minRequired.textContent = "Warning: Collateral ratio below 225%";
+              minRequired.classList.add("warning");
             } else {
-              safetyMargin.className = 'result warning';
+              currentRatio.classList.add("warning");
+              const minAlphNeeded = (totalBorrowed * MIN_CR) / (100 * alphPrice);
+              const additionalAlphNeeded = minAlphNeeded - alph;
+              minRequired.textContent = `Danger: Need ${additionalAlphNeeded.toFixed(
+                2
+              )} more ALPH to reach minimum 200%`;
+              minRequired.classList.add("warning");
+            }
+
+            liquidationPrice.textContent = `Liquidation Price: $${liqPrice.toFixed(4)}`;
+
+            if (priceDrop > 0) {
+              safetyMargin.textContent = `Price can drop ${priceDrop.toFixed(2)}% before liquidation`;
+              safetyMargin.className = "result";
+              if (priceDrop >= 25) {
+                safetyMargin.classList.add("safe");
+              } else if (priceDrop >= 12.5) {
+                safetyMargin.classList.add("caution");
+              } else {
+                safetyMargin.classList.add("warning");
+              }
+            } else {
+              safetyMargin.textContent = "DANGER: Below liquidation price!";
+              safetyMargin.className = "result warning";
             }
           } else {
-            safetyMargin.textContent = 'DANGER: Below liquidation price!';
-            safetyMargin.className = 'result warning';
+            collateralValue.textContent = `Collateral Value: $${totalValue.toFixed(2)}`;
+            currentRatio.textContent = "";
+            minRequired.textContent = "";
+            liquidationPrice.textContent = "";
+            safetyMargin.textContent = "";
+            totalBorrow.textContent = "";
           }
         } else {
-          collateralValue.textContent = `Collateral Value: $${totalValue.toFixed(2)}`;
-          currentRatio.textContent = '';
-          minRequired.textContent = '';
-          liquidationPrice.textContent = '';
-          safetyMargin.textContent = '';
-          totalBorrow.textContent = '';
+          maxBorrow.textContent = "";
+          collateralValue.textContent = "";
+          currentRatio.textContent = "";
+          minRequired.textContent = "";
+          liquidationPrice.textContent = "";
+          safetyMargin.textContent = "";
+          totalBorrow.textContent = "";
         }
-      } else {
-        maxBorrow.textContent = '';
-        collateralValue.textContent = '';
-        currentRatio.textContent = '';
-        minRequired.textContent = '';
-        liquidationPrice.textContent = '';
-        safetyMargin.textContent = '';
-        totalBorrow.textContent = '';
       }
-    }
 
-    // Initial fetch
-    fetchPrice();
-    
-    // Auto refresh every 30 seconds
-    setInterval(fetchPrice, REFRESH_INTERVAL);
-  </script>
-</body>
-</html> 
+      // Initial price fetch and interval
+      fetchPrice();
+      setInterval(fetchPrice, REFRESH_INTERVAL);
+    </script>
+  </body>
+</html>
