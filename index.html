@@ -553,8 +553,11 @@
        ***********************/
       let alphPrice = null;
       let lastUpdateTime = null;
+      let lastAddressFetchTime = null;
+      let currentAddress = null;
       const MIN_CR = 200; // 200%
       const REFRESH_INTERVAL = 30000; // 30s
+      const ADDRESS_REFRESH_INTERVAL = 60000; // 60s for address data
 
       // Hex to binary decoder function
       function hexToBinUnsafe(hex) {
@@ -674,8 +677,13 @@
         if (!address) {
           status.textContent = 'Please enter an address.';
           status.className = 'fetch-status error';
+          currentAddress = null; // Clear current address
           return;
         }
+        
+        // Store the address for automatic refresh
+        currentAddress = address;
+        lastAddressFetchTime = new Date();
         
         status.textContent = 'Fetching collateral and borrowed amount...';
         status.className = 'fetch-status';
@@ -709,6 +717,42 @@
         } catch (e) {
           status.textContent = 'Could not fetch data. Please check the address or try again later.';
           status.className = 'fetch-status error';
+        }
+      }
+
+      // Automatic refresh for address data
+      async function autoRefreshAddressData() {
+        if (currentAddress && lastAddressFetchTime) {
+          const now = new Date();
+          const timeSinceLastFetch = now - lastAddressFetchTime;
+          
+          if (timeSinceLastFetch >= ADDRESS_REFRESH_INTERVAL) {
+            // Silently refresh without showing status messages
+            const alphInput = document.getElementById('alph');
+            const existingBorrowInput = document.getElementById('existingBorrow');
+            
+            try {
+              // Fetch collateral
+              const collateralRes = await fetch(`https://corsproxy.io/?https://api.alphbanx.com/api/loan/${currentAddress}`);
+              if (collateralRes.ok && collateralRes.status !== 404) {
+                const collateralData = await collateralRes.json();
+                
+                // Fetch borrowed amount
+                const borrowedAmount = await fetchUserBorrowed(currentAddress);
+                
+                if (typeof collateralData.currentCollateral === 'number') {
+                  alphInput.value = collateralData.currentCollateral;
+                  existingBorrowInput.value = borrowedAmount.toFixed(2);
+                  updateCalculator();
+                }
+              }
+              
+              lastAddressFetchTime = now;
+            } catch (e) {
+              // Silently fail for auto-refresh
+              console.log('Auto-refresh failed:', e);
+            }
+          }
         }
       }
 
@@ -918,6 +962,7 @@
 
       fetchPrice();
       setInterval(fetchPrice, REFRESH_INTERVAL);
+      setInterval(autoRefreshAddressData, 10000); // Check every 10 seconds for address refresh
     </script>
   </body>
 </html>
