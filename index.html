@@ -45,7 +45,7 @@
       <div class="input-group">
         <label for="fetchAddress">Paste your address to fetch ALPH collateral and borrowed ABD</label>
         <div class="address-fetch-group">
-          <input type="text" id="fetchAddress" placeholder="Paste your address..." />
+          <input type="text" id="fetchAddress" placeholder="Paste your address..." onkeydown="handleAddressKeydown(event)" />
           <button type="button" onclick="fetchCollateralAndBorrowed()">Fetch Data</button>
         </div>
         <div class="fetch-status" id="fetchStatus"></div>
@@ -109,7 +109,10 @@
         <div class="result" id="minRequired"></div>
       </div>
 
-      <!-- Price info -->
+      <!-- Liquidation info -->
+       
+      <div class="liquidation">
+        <!-- Price info --><!-- Price info -->
       <div class="result price-info">
         <span id="price">Loading ALPH price...</span>
         <span
@@ -119,17 +122,18 @@
           >⟳</span
         >
       </div>
-
-      <!-- Liquidation info -->
-      <div class="liquidation">
         <div class="result" id="liquidationPrice"></div>
         <div class="result" id="safetyMargin"></div>
       </div>
+
+      
 
       <div class="result info">
         The minimum required collateral ratio is 200%. Keep your ratio above
         this to avoid liquidation risk.
       </div>
+
+      
 
       <!-- Footer -->
       <div class="footer">

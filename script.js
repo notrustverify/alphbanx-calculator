@@ -70,34 +70,6 @@ function addressFromContractId(contractId) {
   return bs58Encode(bytes)
 }
 
-// Fetch total borrowed ABD
-async function fetchTotalBorrowed() {
-  try {
-    const response = await fetch('https://lb-fullnode-alephium.notrustverify.ch/contracts/call-contract', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        "args": [],
-        "group": 0,
-        "address": "255g8Y32tQ8ZfxhUXgwS2MwKSoxfAarH6YXqAjUZRga15",
-        "methodIndex": 9
-      })
-    });
-    
-    const data = await response.json();
-    if (data.type === "CallContractSucceeded" && data.returns && data.returns[0]) {
-      const borrowedValue = data.returns[0].value;
-      const borrowedABD = parseInt(borrowedValue) / Math.pow(10, 9);
-      return borrowedABD;
-    }
-    throw new Error('Invalid response format');
-  } catch (error) {
-    console.error('Error fetching total borrowed:', error);
-    throw error;
-  }
-}
 
 // Fetch user's specific borrowed ABD
 async function fetchUserBorrowed(userAddress) {
@@ -132,6 +104,47 @@ async function fetchUserBorrowed(userAddress) {
     console.error('Error fetching user borrowed:', error);
     return 0; // Return 0 on error
   }
+}
+
+// Fetch interest rate
+async function fetchInterestRate(positionAddress) {
+  try {
+    const response = await fetch('https://lb-fullnode-alephium.notrustverify.ch/contracts/call-contract', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        "args": [],
+        "group": 0,
+        "address": positionAddress,
+        "methodIndex": 5
+      })
+    });
+    
+    const data = await response.json();
+    if (data.type === "CallContractSucceeded" && data.returns && data.returns[0]) {
+      const interestValue = data.returns[0].value;
+      // Convert from basis points to percentage (assuming it's in basis points)
+      const interestRate = parseInt(interestValue); // Convert to percentage
+      return interestRate;
+    }
+    return 0; // Return 0 if no interest rate found
+  } catch (error) {
+    console.error('Error fetching interest rate:', error);
+    return 0; // Return 0 on error
+  }
+}
+
+// Calculate total amount to reimburse after one year
+function calculateYearlyRepayment(borrowedAmount, interestRate) {
+  if (borrowedAmount <= 0 || interestRate <= 0) {
+    return borrowedAmount;
+  }
+  
+  const interestAmount = (borrowedAmount * interestRate) / 100;
+  const totalRepayment = borrowedAmount + interestAmount;
+  return totalRepayment;
 }
 
 // Find address for post parameters
@@ -197,12 +210,28 @@ async function fetchCollateralAndBorrowed() {
     if (!collateralRes.ok) throw new Error('Network error');
     const collateralData = await collateralRes.json();
     
+    // Get position address
+    const contractId = await findAddressForParams(address);
+    const positionAddress = addressFromContractId(contractId);
+    
     // Fetch borrowed amount using the new API
     const borrowedAmount = await fetchUserBorrowed(address);
+    
+    // Fetch interest rate using position address
+    const interestRate = await fetchInterestRate(positionAddress);
     
     if (typeof collateralData.currentCollateral === 'number') {
       alphInput.value = collateralData.currentCollateral;
       existingBorrowInput.value = borrowedAmount.toFixed(2);
+      
+      // Calculate and display yearly repayment
+      if (borrowedAmount > 0 && interestRate > 0) {
+        const yearlyRepayment = calculateYearlyRepayment(borrowedAmount, interestRate);
+        const interestAmount = yearlyRepayment - borrowedAmount;
+        
+        // Update the calculator to show interest information
+        updateInterestDisplay(interestRate, yearlyRepayment, interestAmount);
+      }
       
       // Clear status on success - don't show success message
       status.textContent = '';
@@ -216,6 +245,39 @@ async function fetchCollateralAndBorrowed() {
     status.textContent = 'Could not fetch data. Please check the address or try again later.';
     status.className = 'fetch-status error';
   }
+}
+
+// Update interest display
+function updateInterestDisplay(interestRate, yearlyRepayment, interestAmount) {
+  // Create or update interest display elements
+  let interestInfo = document.getElementById('interestInfo');
+  if (!interestInfo) {
+    interestInfo = document.createElement('div');
+    interestInfo.id = 'interestInfo';
+    interestInfo.className = 'borrow-info';
+    interestInfo.style.marginTop = '16px';
+    
+    // Insert at the end, before the footer
+    const footer = document.querySelector('.footer');
+    if (footer) {
+      footer.parentNode.insertBefore(interestInfo, footer);
+    }
+  }
+  
+  // Calculate ALPH equivalent for interest amount
+  const alphEquivalent = alphPrice ? (interestAmount / alphPrice) : 0;
+  
+  interestInfo.innerHTML = `
+    <div class="result" style="font-size: 0.85rem; margin-bottom: 8px; color: var(--primary);">
+      Interest Rate: ${interestRate.toFixed(2)}% per year
+    </div>
+    <div class="result" style="font-size: 1rem;">
+      Interest amount: ${interestAmount.toFixed(2)} ABD (${alphEquivalent.toFixed(4)} ALPH)
+    </div>
+    <div class="result" style="color: var(--subtext); font-size: 0.8rem;">
+      Total to repay after 1 year: ${yearlyRepayment.toFixed(2)} ABD
+    </div>
+  `;
 }
 
 // Automatic refresh for address data
@@ -235,12 +297,27 @@ async function autoRefreshAddressData() {
         if (collateralRes.ok && collateralRes.status !== 404) {
           const collateralData = await collateralRes.json();
           
+          // Get position address
+          const contractId = await findAddressForParams(currentAddress);
+          const positionAddress = addressFromContractId(contractId);
+          
           // Fetch borrowed amount
           const borrowedAmount = await fetchUserBorrowed(currentAddress);
+          
+          // Fetch interest rate using position address
+          const interestRate = await fetchInterestRate(positionAddress);
           
           if (typeof collateralData.currentCollateral === 'number') {
             alphInput.value = collateralData.currentCollateral;
             existingBorrowInput.value = borrowedAmount.toFixed(2);
+            
+            // Update interest display if there's borrowed amount
+            if (borrowedAmount > 0 && interestRate > 0) {
+              const yearlyRepayment = calculateYearlyRepayment(borrowedAmount, interestRate);
+              const interestAmount = yearlyRepayment - borrowedAmount;
+              updateInterestDisplay(interestRate, yearlyRepayment, interestAmount);
+            }
+            
             updateCalculator();
           }
         }
@@ -323,9 +400,9 @@ function updatePriceDisplay() {
     const timeStr = lastUpdateTime.toLocaleTimeString();
     document.getElementById(
       "price"
-    ).textContent = `Current ALPH Price: $${alphPrice.toFixed(
+    ).innerHTML = `Current ALPH Price: $${alphPrice.toFixed(
       4
-    )} (Updated: ${timeStr})`;
+    )} <span style="font-size: 0.7rem; color: var(--subtext);">(${timeStr})</span>`;
   }
 }
 
@@ -462,3 +539,31 @@ function updateCalculator() {
 fetchPrice();
 setInterval(fetchPrice, REFRESH_INTERVAL);
 setInterval(autoRefreshAddressData, 10000); // Check every 10 seconds for address refresh 
+setInterval(autoRefreshAddressData, 10000); // Check every 10 seconds for address refresh 
+
+// Handle Enter key press in address input
+function handleAddressKeydown(event) {
+  console.log('Key pressed:', event.key); // Debug logging
+  if (event.key === "Enter") {
+    event.preventDefault();
+    console.log('Enter pressed, fetching data...'); // Debug logging
+    fetchCollateralAndBorrowed();
+  }
+}
+
+// Alternative event listener approach
+document.addEventListener('DOMContentLoaded', function() {
+  const addressInput = document.getElementById('fetchAddress');
+  if (addressInput) {
+    addressInput.addEventListener('keydown', function(event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        console.log('Enter pressed via event listener, fetching data...'); // Debug logging
+        fetchCollateralAndBorrowed();
+      }
+    });
+  }
+});
+
+// Update interest display 
+// Update interest display 
