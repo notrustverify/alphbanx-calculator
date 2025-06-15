@@ -24,6 +24,7 @@ let alphPrice = null;
 let lastUpdateTime = null;
 let lastAddressFetchTime = null;
 let currentAddress = null;
+let currentInterestRate = 5; // Default interest rate of 5%
 const MIN_CR = 200; // 200%
 const REFRESH_INTERVAL = 30000; // 30s
 const ADDRESS_REFRESH_INTERVAL = 60000; // 60s for address data
@@ -126,14 +127,26 @@ async function fetchInterestRate(positionAddress) {
     if (data.type === "CallContractSucceeded" && data.returns && data.returns[0]) {
       const interestValue = data.returns[0].value;
       // Convert from basis points to percentage (assuming it's in basis points)
-      const interestRate = parseInt(interestValue); // Convert to percentage
-      return interestRate;
+      currentInterestRate = parseInt(interestValue); // Store globally
+      return currentInterestRate;
     }
-    return 0; // Return 0 if no interest rate found
+    return currentInterestRate; // Return default rate if fetch fails
   } catch (error) {
     console.error('Error fetching interest rate:', error);
-    return 0; // Return 0 on error
+    return currentInterestRate; // Return default rate on error
   }
+}
+
+// Calculate interest for a given period (in days)
+function calculateInterest(borrowedAmount, interestRate, days) {
+  if (borrowedAmount <= 0 || interestRate <= 0) {
+    return 0;
+  }
+  
+  // Convert annual rate to daily rate and calculate compound interest
+  const dailyRate = interestRate / 36500; // 365 days * 100 (for percentage)
+  const interestAmount = borrowedAmount * dailyRate * days;
+  return interestAmount;
 }
 
 // Calculate total amount to reimburse after one year
@@ -142,7 +155,7 @@ function calculateYearlyRepayment(borrowedAmount, interestRate) {
     return borrowedAmount;
   }
   
-  const interestAmount = (borrowedAmount * interestRate) / 100;
+  const interestAmount = calculateInterest(borrowedAmount, interestRate, 365);
   const totalRepayment = borrowedAmount + interestAmount;
   return totalRepayment;
 }
@@ -225,12 +238,8 @@ async function fetchCollateralAndBorrowed() {
       existingBorrowInput.value = borrowedAmount.toFixed(2);
       
       // Calculate and display yearly repayment
-      if (borrowedAmount > 0 && interestRate > 0) {
-        const yearlyRepayment = calculateYearlyRepayment(borrowedAmount, interestRate);
-        const interestAmount = yearlyRepayment - borrowedAmount;
-        
-        // Update the calculator to show interest information
-        updateInterestDisplay(interestRate, yearlyRepayment, interestAmount);
+      if (borrowedAmount > 0) {
+        updateInterestDisplay(interestRate, borrowedAmount);
       }
       
       // Clear status on success - don't show success message
@@ -248,7 +257,7 @@ async function fetchCollateralAndBorrowed() {
 }
 
 // Update interest display
-function updateInterestDisplay(interestRate, yearlyRepayment, interestAmount) {
+function updateInterestDisplay(interestRate, totalBorrowed) {
   // Create or update interest display elements
   let interestInfo = document.getElementById('interestInfo');
   if (!interestInfo) {
@@ -264,18 +273,32 @@ function updateInterestDisplay(interestRate, yearlyRepayment, interestAmount) {
     }
   }
   
-  // Calculate ALPH equivalent for interest amount
-  const alphEquivalent = alphPrice ? (interestAmount / alphPrice) : 0;
+  // Calculate interest for different periods
+  const dailyInterest = calculateInterest(totalBorrowed, interestRate, 1);
+  const monthlyInterest = calculateInterest(totalBorrowed, interestRate, 30);
+  const yearlyInterest = calculateInterest(totalBorrowed, interestRate, 365);
+  const totalRepayment = totalBorrowed + yearlyInterest;
+  
+  // Calculate ALPH equivalents
+  const dailyAlphEquiv = alphPrice ? (dailyInterest / alphPrice) : 0;
+  const monthlyAlphEquiv = alphPrice ? (monthlyInterest / alphPrice) : 0;
+  const yearlyAlphEquiv = alphPrice ? (yearlyInterest / alphPrice) : 0;
   
   interestInfo.innerHTML = `
-    <div class="result" style="font-size: 0.85rem; margin-bottom: 8px; color: var(--primary);">
-      Interest Rate: ${interestRate.toFixed(2)}% per year
+    <div class="result" style="font-size: 1rem; margin-bottom: 12px; color: var(--primary); border-bottom: 1px solid var(--border); padding-bottom: 8px;">
+      Interest Rate: ${interestRate.toFixed(2)}% APR
     </div>
-    <div class="result" style="font-size: 1rem;">
-      Interest amount: ${interestAmount.toFixed(2)} ABD (${alphEquivalent.toFixed(4)} ALPH)
+    <div class="result" style="font-size: 0.9rem; margin-bottom: 8px;">
+      Daily Interest: ${dailyInterest.toFixed(4)} ABD (${dailyAlphEquiv.toFixed(6)} ALPH)
     </div>
-    <div class="result" style="color: var(--subtext); font-size: 0.8rem;">
-      Total to repay after 1 year: ${yearlyRepayment.toFixed(2)} ABD
+    <div class="result" style="font-size: 0.9rem; margin-bottom: 8px;">
+      Monthly Interest: ${monthlyInterest.toFixed(2)} ABD (${monthlyAlphEquiv.toFixed(4)} ALPH)
+    </div>
+    <div class="result" style="font-size: 0.9rem; margin-bottom: 12px;">
+      Yearly Interest: ${yearlyInterest.toFixed(2)} ABD (${yearlyAlphEquiv.toFixed(4)} ALPH)
+    </div>
+    <div class="result" style="font-size: 1rem; color: var(--text); border-top: 1px solid var(--border); padding-top: 8px;">
+      Total to repay after 1 year: ${totalRepayment.toFixed(2)} ABD
     </div>
   `;
 }
@@ -312,10 +335,8 @@ async function autoRefreshAddressData() {
             existingBorrowInput.value = borrowedAmount.toFixed(2);
             
             // Update interest display if there's borrowed amount
-            if (borrowedAmount > 0 && interestRate > 0) {
-              const yearlyRepayment = calculateYearlyRepayment(borrowedAmount, interestRate);
-              const interestAmount = yearlyRepayment - borrowedAmount;
-              updateInterestDisplay(interestRate, yearlyRepayment, interestAmount);
+            if (borrowedAmount > 0) {
+              updateInterestDisplay(interestRate, borrowedAmount);
             }
             
             updateCalculator();
@@ -451,6 +472,11 @@ function updateCalculator() {
     totalBorrow.textContent = `Total Borrowed: ${totalBorrowed.toFixed(
       2
     )} ABD`;
+
+    // Update interest information whenever calculator updates
+    if (totalBorrowed > 0) {
+      updateInterestDisplay(currentInterestRate, totalBorrowed);
+    }
 
     if (totalBorrowed > 0) {
       const currentCR = (totalValue / totalBorrowed) * 100;

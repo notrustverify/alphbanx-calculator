@@ -109,7 +109,7 @@ body::before {
 
 h2 {
   text-align: center;
-  font-size: 1.6rem;
+  font-size: 1.3rem;
   margin-bottom: 12px;
   background: linear-gradient(90deg, var(--primary) 0%, var(--primary-hover) 100%);
   -webkit-background-clip: text;
@@ -126,7 +126,7 @@ h2 {
 
 .dapp-link a {
   text-decoration: none;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: var(--primary);
 }
 
