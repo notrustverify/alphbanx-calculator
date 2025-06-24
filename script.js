@@ -18,6 +18,166 @@
 })();
 
 /***********************
+ *  ADDRESS SAVING    *
+ ***********************/
+// Load saved addresses on page load
+document.addEventListener('DOMContentLoaded', function() {
+  loadSavedAddressesList();
+  updateAddressButtons();
+  
+  // Add event listeners for address input
+  const addressInput = document.getElementById('fetchAddress');
+  addressInput.addEventListener('input', updateAddressButtons);
+  addressInput.addEventListener('paste', updateAddressButtons);
+});
+
+// Save current address to localStorage
+function saveCurrentAddress() {
+  console.log('saveCurrentAddress called'); // Debug log
+  const address = document.getElementById('fetchAddress').value.trim();
+  console.log('Address value:', address); // Debug log
+  
+  if (!address) {
+    console.log('No address provided'); // Debug log
+    showFetchStatus('Please enter an address first', 'error');
+    return;
+  }
+  
+  const savedAddresses = getSavedAddresses();
+  console.log('Current saved addresses:', savedAddresses); // Debug log
+  
+  // Check if address already exists
+  if (savedAddresses.includes(address)) {
+    console.log('Address already exists'); // Debug log
+    showFetchStatus('Address already saved', 'error');
+    return;
+  }
+  
+  // Add new address
+  savedAddresses.push(address);
+  localStorage.setItem('savedAddresses', JSON.stringify(savedAddresses));
+  console.log('Address saved to localStorage'); // Debug log
+  
+  // Visual feedback for quick save button
+  const quickSaveBtn = document.getElementById('quickSaveBtn');
+  const originalSVG = quickSaveBtn.innerHTML;
+  quickSaveBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" fill="currentColor"/></svg>';
+  quickSaveBtn.style.background = '#27ae60';
+  
+  // Reset button after 1 second
+  setTimeout(() => {
+    quickSaveBtn.innerHTML = originalSVG;
+    quickSaveBtn.style.background = '';
+  }, 1000);
+  
+  // Update UI
+  loadSavedAddressesList();
+  updateAddressButtons();
+  showFetchStatus('Address saved successfully', 'success');
+}
+
+// Remove selected address from localStorage
+function removeSavedAddress() {
+  const select = document.getElementById('savedAddresses');
+  const selectedAddress = select.value;
+  
+  if (!selectedAddress) {
+    showFetchStatus('Please select an address to remove', 'error');
+    return;
+  }
+  
+  const savedAddresses = getSavedAddresses();
+  const updatedAddresses = savedAddresses.filter(addr => addr !== selectedAddress);
+  
+  localStorage.setItem('savedAddresses', JSON.stringify(updatedAddresses));
+  
+  // Update UI
+  loadSavedAddressesList();
+  updateAddressButtons();
+  showFetchStatus('Address removed successfully', 'success');
+}
+
+// Load selected address into input field
+function loadSavedAddress() {
+  const select = document.getElementById('savedAddresses');
+  const selectedAddress = select.value;
+  
+  if (selectedAddress) {
+    document.getElementById('fetchAddress').value = selectedAddress;
+    updateAddressButtons();
+    
+    // Automatically fetch data for the selected address
+    fetchCollateralAndBorrowed();
+  }
+}
+
+// Get saved addresses from localStorage
+function getSavedAddresses() {
+  const saved = localStorage.getItem('savedAddresses');
+  return saved ? JSON.parse(saved) : [];
+}
+
+// Load saved addresses into dropdown
+function loadSavedAddressesList() {
+  const select = document.getElementById('savedAddresses');
+  const savedAddresses = getSavedAddresses();
+  
+  // Clear existing options except the first one
+  select.innerHTML = '<option value="">Select saved address...</option>';
+  
+  // Add saved addresses
+  savedAddresses.forEach(address => {
+    const option = document.createElement('option');
+    option.value = address;
+    option.textContent = `${address.substring(0, 8)}...${address.substring(address.length - 8)}`;
+    select.appendChild(option);
+  });
+}
+
+// Update save/remove button states
+function updateAddressButtons() {
+  console.log('updateAddressButtons called'); // Debug log
+  const addressInput = document.getElementById('fetchAddress');
+  const savedSelect = document.getElementById('savedAddresses');
+  const removeBtn = document.getElementById('removeAddressBtn');
+  const quickSaveBtn = document.getElementById('quickSaveBtn');
+  
+  const currentAddress = addressInput.value.trim();
+  const selectedSavedAddress = savedSelect.value;
+  const savedAddresses = getSavedAddresses();
+  
+  console.log('Current address:', currentAddress); // Debug log
+  console.log('Selected saved address:', selectedSavedAddress); // Debug log
+  console.log('Saved addresses:', savedAddresses); // Debug log
+  
+  // Enable save button if address is not empty and not already saved
+  const canSave = currentAddress && !savedAddresses.includes(currentAddress);
+  console.log('Can save:', canSave); // Debug log
+  quickSaveBtn.disabled = !canSave;
+  
+  // Enable remove button if a saved address is selected
+  removeBtn.disabled = !selectedSavedAddress;
+  
+  console.log('Quick save button disabled:', quickSaveBtn.disabled); // Debug log
+  console.log('Remove button disabled:', removeBtn.disabled); // Debug log
+}
+
+// Enhanced showFetchStatus function
+function showFetchStatus(message, type = 'info') {
+  const status = document.getElementById('fetchStatus');
+  status.textContent = message;
+  status.className = `fetch-status ${type}`;
+  
+  // Clear status after 3 seconds for success/error messages
+  if (type === 'success' || type === 'error') {
+    setTimeout(() => {
+      status.textContent = '';
+      status.className = 'fetch-status';
+    }, 3000);
+  }
+}
+
+/***********************
  *  CALCULATOR LOGIC  *
  ***********************/
 let alphPrice = null;
@@ -194,13 +354,11 @@ async function findAddressForParams(userAddress) {
 // Enhanced fetch collateral function that also fetches borrowed amount
 async function fetchCollateralAndBorrowed() {
   const address = document.getElementById('fetchAddress').value.trim();
-  const status = document.getElementById('fetchStatus');
   const alphInput = document.getElementById('alph');
   const existingBorrowInput = document.getElementById('existingBorrow');
   
   if (!address) {
-    status.textContent = 'Please enter an address.';
-    status.className = 'fetch-status error';
+    showFetchStatus('Please enter an address.', 'error');
     currentAddress = null; // Clear current address
     return;
   }
@@ -209,15 +367,13 @@ async function fetchCollateralAndBorrowed() {
   currentAddress = address;
   lastAddressFetchTime = new Date();
   
-  status.textContent = 'Fetching collateral and borrowed amount...';
-  status.className = 'fetch-status';
+  showFetchStatus('Fetching collateral and borrowed amount...');
   
   try {
     // Fetch collateral
     const collateralRes = await fetch(`https://corsproxy.io/?https://api.alphbanx.com/api/loan/${address}`);
     if (collateralRes.status === 404) {
-      status.textContent = 'Address does not have a loan on AlphBanx.';
-      status.className = 'fetch-status error';
+      showFetchStatus('Address does not have a loan on AlphBanx.', 'error');
       return;
     }
     if (!collateralRes.ok) throw new Error('Network error');
@@ -243,16 +399,13 @@ async function fetchCollateralAndBorrowed() {
       }
       
       // Clear status on success - don't show success message
-      status.textContent = '';
-      status.className = 'fetch-status';
+      showFetchStatus('');
       updateCalculator();
     } else {
-      status.textContent = 'No collateral found for this address.';
-      status.className = 'fetch-status error';
+      showFetchStatus('No collateral found for this address.', 'error');
     }
   } catch (e) {
-    status.textContent = 'Could not fetch data. Please check the address or try again later.';
-    status.className = 'fetch-status error';
+    showFetchStatus('Could not fetch data. Please check the address or try again later.', 'error');
   }
 }
 
@@ -573,6 +726,7 @@ function handleAddressKeydown(event) {
   if (event.key === "Enter") {
     event.preventDefault();
     console.log('Enter pressed, fetching data...'); // Debug logging
+    updateAddressButtons(); // Update button states
     fetchCollateralAndBorrowed();
   }
 }
@@ -585,6 +739,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (event.key === "Enter") {
         event.preventDefault();
         console.log('Enter pressed via event listener, fetching data...'); // Debug logging
+        updateAddressButtons(); // Update button states
         fetchCollateralAndBorrowed();
       }
     });
